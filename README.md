@@ -16,7 +16,7 @@ TODO: Write development instructions here
 
 ## Contributing
 
-1. Fork it (<https://github.com/your-github-user/EmeraldsHashtable/fork>)
+1. Fork it (<https://github.com/The-Fourth-Wall/EmeraldsHashtable/fork>)
 2. Create your feature branch (`git checkout -b my-new-feature`)
 3. Commit your changes (`git commit -am 'Add some feature'`)
 4. Push to the branch (`git push origin my-new-feature`)
@@ -24,4 +24,4 @@ TODO: Write development instructions here
 
 ## Contributors
 
-- [YourName](https://github.com/your-github-user) - creator and maintainer
+- [oblivious](https://github.com/Oblivious-Oblivious) - creator and maintainer
