@@ -1,0 +1,37 @@
+{
+  "name": "EmeraldsHashtable",
+
+  "version": "0.1.0",
+
+  "dependencies": {},
+
+  "dev-dependencies": {
+    "cSpec": "Oblivious-Oblivious/cSpec"
+  },
+
+  "build": "",
+
+  "compile-flags": {
+    "cc": "clang",
+    "debug": {
+      "opt": "-Og -g",
+      "version": "-std=c89",
+      "flags": "-Wall -Wextra -Werror -pedantic -pedantic-errors -Wpedantic",
+      "warnings": ""
+    },
+    "release": {
+      "opt": "-O2",
+      "version": "-std=c2x",
+      "flags": "",
+      "warnings": ""
+    },
+    "test": {
+      "opt": "-Og -g",
+      "version": "-std=c89",
+      "flags": "",
+      "warnings": ""
+    }
+  },
+
+  "license": "mit"
+}
