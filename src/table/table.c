@@ -4,8 +4,6 @@
 #include "../../libs/EmeraldsVector/export/EmeraldsVector.h" /* IWYU pragma: keep */
 #include "komihash.h"
 
-#include <stdio.h>
-
 /**
  * @brief Initializes a vector with a given size
  * @param v -> The vector to initialize
@@ -33,11 +31,11 @@
 // TODO - Remove this
 #define INITIAL_SIZE 16
 
-static size_t _hashtable_hash_key(const char *key) {
+static size_t _table_hash_key(const char *key) {
   return komihash(key, sizeof(key), 0x0123456789ABCDEF);
 }
 
-EmeraldsHashtable *hashtable_new(void) {
+EmeraldsHashtable *table_new(void) {
   EmeraldsHashtable *self =
     (EmeraldsHashtable *)malloc(sizeof(EmeraldsHashtable));
 
@@ -49,7 +47,7 @@ EmeraldsHashtable *hashtable_new(void) {
   return self;
 }
 
-void hashtable_rehash(EmeraldsHashtable *self, size_t bucket_count_new) {
+void table_rehash(EmeraldsHashtable *self, size_t bucket_count_new) {
 #define MAX(a, b) ((a) > (b) ? (a) : (b))
   // NOTE - Can't rehash down to smaller than current size or initial size
   bucket_count_new = MAX(MAX(bucket_count_new, self->size), INITIAL_SIZE);
@@ -106,13 +104,13 @@ void hashtable_rehash(EmeraldsHashtable *self, size_t bucket_count_new) {
   self->values  = values_new;
 }
 
-void hashtable_insert(EmeraldsHashtable *self, const char *key, size_t value) {
+void table_add(EmeraldsHashtable *self, const char *key, size_t value) {
   if(self->size * 3 > vector_capacity(self->buckets) * 2) {
     // NOTE - For slow key wrapping only rehash by a factor of 2
-    hashtable_rehash(self, vector_capacity(self->buckets) * 2);
+    table_rehash(self, vector_capacity(self->buckets) * 2);
   }
 
-  size_t hash         = _hashtable_hash_key(key) & BITS_62_MASK;
+  size_t hash         = _table_hash_key(key) & BITS_62_MASK;
   size_t bucket_start = hash & (vector_capacity(self->buckets) - 1);
 
   size_t *target       = NULL;
@@ -144,8 +142,8 @@ void hashtable_insert(EmeraldsHashtable *self, const char *key, size_t value) {
   }
 }
 
-size_t *hashtable_lookup(EmeraldsHashtable *self, const char *key) {
-  size_t hash         = _hashtable_hash_key(key) & BITS_62_MASK;
+size_t *table_get(EmeraldsHashtable *self, const char *key) {
+  size_t hash         = _table_hash_key(key) & BITS_62_MASK;
   size_t bucket_start = hash & (vector_capacity(self->buckets) - 1);
 
   for(size_t i = bucket_start; i < vector_capacity(self->buckets); i++) {
@@ -180,8 +178,8 @@ size_t *hashtable_lookup(EmeraldsHashtable *self, const char *key) {
   return NULL;
 }
 
-bool hashtable_remove(struct EmeraldsHashtable *self, char *key) {
-  size_t hash         = _hashtable_hash_key(key) & BITS_62_MASK;
+bool table_remove(struct EmeraldsHashtable *self, char *key) {
+  size_t hash         = _table_hash_key(key) & BITS_62_MASK;
   size_t bucket_start = hash & (vector_capacity(self->buckets) - 1);
 
   for(size_t i = bucket_start; i < vector_capacity(self->buckets); i++) {
@@ -218,12 +216,6 @@ bool hashtable_remove(struct EmeraldsHashtable *self, char *key) {
   }
 
   return false;
-}
-
-void hashtable_free(EmeraldsHashtable *self) {
-  vector_free(self->buckets);
-  vector_free(self->keys);
-  vector_free(self->values);
 }
 
 #undef STATE_EMPTY

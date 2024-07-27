@@ -6,19 +6,19 @@
 
 module(T_table, {
   it("handles simple inserts, lookups and removals", {
-    EmeraldsHashtable *table = hashtable_new();
+    EmeraldsHashtable *table = table_new();
     char *key1               = string_new("key1");
     char *key2               = string_new("key2");
     char *key3               = string_new("key3");
 
-    hashtable_insert(table, key1, 100);
-    hashtable_insert(table, key2, 200);
-    hashtable_insert(table, key3, 300);
+    table_add(table, key1, 100);
+    table_add(table, key2, 200);
+    table_add(table, key3, 300);
 
-    size_t *value1 = hashtable_lookup(table, key1);
-    size_t *value2 = hashtable_lookup(table, key2);
-    size_t *value3 = hashtable_lookup(table, key3);
-    size_t *value4 = hashtable_lookup(table, string_new("key4"));
+    size_t *value1 = table_get(table, key1);
+    size_t *value2 = table_get(table, key2);
+    size_t *value3 = table_get(table, key3);
+    size_t *value4 = table_get(table, string_new("key4"));
 
     assert_that(value1 isnot NULL);
     assert_that(*value1 is 100);
@@ -28,13 +28,16 @@ module(T_table, {
     assert_that(*value3 is 300);
     assert_that(value4 is NULL);
 
-    hashtable_remove(table, key2);
-    value2 = hashtable_lookup(table, key2);
+    table_remove(table, key2);
+    value2 = table_get(table, key2);
     assert_that(value2 is NULL);
+
+    table_free(table);
+    assert_that(table is NULL);
   });
 
   it("reads a file with 100000 random words", {
-    EmeraldsHashtable *table = hashtable_new();
+    EmeraldsHashtable *table = table_new();
 
     char *words = string_new(
       read_handler_load(read_handler_new(), "examples/random_words.txt")
@@ -42,15 +45,15 @@ module(T_table, {
     char **arr = string_split(words, '\n');
 
     for(size_t i = 0; i < vector_size(arr); i++) {
-      hashtable_insert(table, string_new(arr[i]), i + 1);
+      table_add(table, string_new(arr[i]), i + 1);
     }
 
-    size_t *v1 = hashtable_lookup(table, string_new("bfs6Zsw"));
-    size_t *v2 = hashtable_lookup(table, string_new("ECrPiBm43eIJ0xN"));
-    size_t *v3 = hashtable_lookup(table, string_new("EPYDHcSveb7sD"));
-    size_t *v4 = hashtable_lookup(table, string_new("CRNiqP3OKSKA4"));
-    size_t *v5 = hashtable_lookup(table, string_new("ummXz6BpkGfRRq"));
-    size_t *v6 = hashtable_lookup(table, string_new("tP7hbqI"));
+    size_t *v1 = table_get(table, string_new("bfs6Zsw"));
+    size_t *v2 = table_get(table, string_new("ECrPiBm43eIJ0xN"));
+    size_t *v3 = table_get(table, string_new("EPYDHcSveb7sD"));
+    size_t *v4 = table_get(table, string_new("CRNiqP3OKSKA4"));
+    size_t *v5 = table_get(table, string_new("ummXz6BpkGfRRq"));
+    size_t *v6 = table_get(table, string_new("tP7hbqI"));
 
     assert_that(v1 isnot NULL);
     assert_that(v2 isnot NULL);
@@ -68,7 +71,7 @@ module(T_table, {
   });
 
   it("reads a big file with 1000000 random words", {
-    EmeraldsHashtable *table = hashtable_new();
+    EmeraldsHashtable *table = table_new();
 
     char *words =
       string_new(read_handler_load(read_handler_new(), "examples/big_list.txt")
@@ -76,15 +79,15 @@ module(T_table, {
     char **arr = string_split(words, '\n');
 
     for(size_t i = 0; i < vector_size(arr); i++) {
-      hashtable_insert(table, string_new(arr[i]), i + 1);
+      table_add(table, string_new(arr[i]), i + 1);
     }
 
-    size_t *v1 = hashtable_lookup(table, string_new("VJC3HJ1X"));
-    size_t *v2 = hashtable_lookup(table, string_new("VSqxvKVdVVx9a"));
-    size_t *v3 = hashtable_lookup(table, string_new("qjihpIWBF4D"));
-    size_t *v4 = hashtable_lookup(table, string_new("rAwK4B12daB4fi1"));
-    size_t *v5 = hashtable_lookup(table, string_new("qcyZ1aMb5tNAvp"));
-    size_t *v6 = hashtable_lookup(table, string_new("wdLIfi3G7Aa4Oks"));
+    size_t *v1 = table_get(table, string_new("VJC3HJ1X"));
+    size_t *v2 = table_get(table, string_new("VSqxvKVdVVx9a"));
+    size_t *v3 = table_get(table, string_new("qjihpIWBF4D"));
+    size_t *v4 = table_get(table, string_new("rAwK4B12daB4fi1"));
+    size_t *v5 = table_get(table, string_new("qcyZ1aMb5tNAvp"));
+    size_t *v6 = table_get(table, string_new("wdLIfi3G7Aa4Oks"));
 
     assert_that(v1 isnot NULL);
     assert_that(v2 isnot NULL);
