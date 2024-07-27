@@ -41,4 +41,4 @@ dkms.conf
 
 libs/
 
-# examples/*.txt
+examples/*.txt
