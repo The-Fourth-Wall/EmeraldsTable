@@ -17,22 +17,117 @@
     }                               \
   } while(0)
 
-#define STATE_EMPTY   0
-#define STATE_FILLED  1
-#define STATE_REMOVED 2
-
 // NOTE - Align bucket to 64 by tagging the state
-#define BITS_62_MASK      (size_t)(0x3fffffffffffffff)
-#define BITS_2_MASK       (size_t)(0xc000000000000000)
-#define BUCKET_HASH(b)    ((*b) & BITS_62_MASK)
-#define BUCKET_STATE(b)   (((*b) & BITS_2_MASK) >> 62)
-#define BUCKET_PACK(h, s) (((h) & BITS_62_MASK) | ((size_t)((s) & 0x03) << 62))
+#define BITS_63_MASK      (size_t)(0x7fffffffffffffff)
+#define BITS_1_MASK       (size_t)(0x8000000000000000)
+#define BUCKET_HASH(b)    ((*b) & BITS_63_MASK)
+#define BUCKET_STATE(b)   (((*b) & BITS_1_MASK) >> 63)
+#define BUCKET_PACK(h, s) (((h) & BITS_63_MASK) | ((size_t)((s) & 0x01) << 63))
 
-// TODO - Remove this
+#define STATE_EMPTY         0
+#define STATE_FILLED        1
+#define BUCKET_IS_EMPTY(b)  (BUCKET_STATE(b) == STATE_EMPTY)
+#define BUCKET_IS_FILLED(b) (BUCKET_STATE(b) == STATE_FILLED)
+
 #define INITIAL_SIZE 16
+#define LOAD_FACTOR  0.75
 
+// NOTE - komihash's simplicity might imporove performance on tiny keys
 static size_t _table_hash_key(const char *key) {
-  return komihash(key, sizeof(key), 0x0123456789ABCDEF);
+  return komihash(key, sizeof(key), 0x0123456789abcdef);
+}
+
+/**
+ * @brief Generic bucket finder
+ * @param buckets -> The buckets vector
+ * @param hash ->
+ * @param keys
+ * @param key
+ * @param find_empty
+ * @return size_t*
+ */
+static size_t *find_bucket(
+  size_t *buckets,
+  size_t hash,
+  const char **keys,
+  const char *key,
+  bool find_empty
+) {
+  size_t bucket_count = vector_capacity(buckets);
+  size_t bucket_start = hash & (bucket_count - 1);
+  size_t *target      = NULL;
+
+  for(size_t i = bucket_start; i < bucket_count; i++) {
+    size_t *bucket = &buckets[i];
+    if(BUCKET_IS_EMPTY(bucket) && find_empty) {
+      return bucket;
+    } else if(BUCKET_IS_FILLED(bucket) && BUCKET_HASH(bucket) == hash &&
+              string_equals(keys[i], key)) {
+      return bucket;
+    } else if(find_empty && !BUCKET_IS_FILLED(bucket)) {
+      target = bucket;
+      break;
+    }
+  }
+
+  // NOTE - Reverse iteration for better cache locality
+  for(size_t i = bucket_start; i > 0; i--) {
+    size_t *bucket = &buckets[i];
+    if(BUCKET_IS_EMPTY(bucket) && find_empty) {
+      return bucket;
+    } else if(BUCKET_IS_FILLED(bucket) && BUCKET_HASH(bucket) == hash &&
+              string_equals(keys[i], key)) {
+      return bucket;
+    } else if(find_empty && !BUCKET_IS_FILLED(bucket)) {
+      target = bucket;
+      break;
+    }
+  }
+
+  return target;
+}
+
+/**
+ * @brief Rehashes when bucket count reaches the load factor
+ * @param self -> The hash table
+ * @param bucket_count_new -> The new bucket count
+ */
+static void table_rehash(EmeraldsHashtable *self, size_t bucket_count_new) {
+#define MAX(a, b) ((a) > (b) ? (a) : (b))
+  // NOTE - Always rehash upwards but at least to initial size
+  bucket_count_new = MAX(MAX(bucket_count_new, self->size), INITIAL_SIZE);
+#undef MAX
+
+  size_t *buckets_new = NULL;
+  vector_initialize_n(buckets_new, bucket_count_new);
+  const char **keys_new = NULL;
+  vector_initialize_n(keys_new, bucket_count_new);
+  size_t *values_new = NULL;
+  vector_initialize_n(values_new, bucket_count_new);
+
+  for(size_t i = 0; i < vector_capacity(self->buckets); i++) {
+    size_t *bucket = &self->buckets[i];
+    if(!BUCKET_IS_FILLED(bucket)) {
+      continue;
+    }
+
+    size_t hash = BUCKET_HASH(bucket);
+    size_t *target =
+      find_bucket(buckets_new, hash, keys_new, self->keys[i], true);
+    if(target != NULL) {
+      *target                   = BUCKET_PACK(hash, STATE_FILLED);
+      size_t bucket_target      = target - buckets_new;
+      keys_new[bucket_target]   = self->keys[i];
+      values_new[bucket_target] = self->values[i];
+    }
+  }
+
+  vector_free(self->buckets);
+  vector_free(self->keys);
+  vector_free(self->values);
+  self->buckets = buckets_new;
+  self->keys    = keys_new;
+  self->values  = values_new;
 }
 
 EmeraldsHashtable *table_new(void) {
@@ -47,185 +142,57 @@ EmeraldsHashtable *table_new(void) {
   return self;
 }
 
-void table_rehash(EmeraldsHashtable *self, size_t bucket_count_new) {
-#define MAX(a, b) ((a) > (b) ? (a) : (b))
-  // NOTE - Can't rehash down to smaller than current size or initial size
-  bucket_count_new = MAX(MAX(bucket_count_new, self->size), INITIAL_SIZE);
-#undef MAX
-
-  size_t *buckets_new = NULL;
-  vector_initialize_n(buckets_new, bucket_count_new);
-  const char **keys_new = NULL;
-  vector_initialize_n(keys_new, bucket_count_new);
-  size_t *values_new = NULL;
-  vector_initialize_n(values_new, bucket_count_new);
-
-  for(size_t i = 0; i < vector_capacity(self->buckets); i++) {
-    size_t *b = &self->buckets[i];
-    if(BUCKET_STATE(b) != STATE_FILLED) {
-      continue;
-    }
-
-    // Hash the key and find the starting bucket
-    size_t hash         = BUCKET_HASH(b);
-    size_t bucket_start = hash & (bucket_count_new - 1);
-
-    size_t *target       = NULL;
-    size_t bucket_target = 0;
-    for(size_t j = bucket_start; j < bucket_count_new; j++) {
-      size_t *bNew = &buckets_new[j];
-      if(BUCKET_STATE(bNew) != STATE_FILLED) {
-        target        = bNew;
-        bucket_target = j;
-        break;
-      }
-    }
-    if(!target) {
-      for(size_t j = bucket_start; j < 0; --j) {
-        size_t *bNew = &buckets_new[j];
-        if(BUCKET_STATE(bNew) != STATE_FILLED) {
-          target        = bNew;
-          bucket_target = j;
-          break;
-        }
-      }
-    }
-
-    if(target != NULL) {
-      *target                   = BUCKET_PACK(hash, STATE_FILLED);
-      keys_new[bucket_target]   = self->keys[i];
-      values_new[bucket_target] = self->values[i];
-    }
-  }
-
-  // TODO - This (potentially) is a memory leak
-  self->buckets = buckets_new;
-  self->keys    = keys_new;
-  self->values  = values_new;
-}
-
 void table_add(EmeraldsHashtable *self, const char *key, size_t value) {
-  if(self->size * 3 > vector_capacity(self->buckets) * 2) {
+  if(self->size > vector_capacity(self->buckets) * LOAD_FACTOR) {
     // NOTE - For slow key wrapping only rehash by a factor of 2
     table_rehash(self, vector_capacity(self->buckets) * 2);
   }
 
-  size_t hash         = _table_hash_key(key) & BITS_62_MASK;
-  size_t bucket_start = hash & (vector_capacity(self->buckets) - 1);
+  size_t hash    = _table_hash_key(key) & BITS_63_MASK;
+  size_t *bucket = find_bucket(self->buckets, hash, self->keys, key, true);
 
-  size_t *target       = NULL;
-  size_t bucket_target = 0;
-  for(size_t i = bucket_start; i < vector_capacity(self->buckets); i++) {
-    size_t *b = &self->buckets[i];
-    if(BUCKET_STATE(b) != STATE_FILLED) {
-      target        = b;
-      bucket_target = i;
-      break;
-    }
-  }
-  if(!target) {
-    for(size_t i = bucket_start; i < 0; --i) {
-      size_t *b = &self->buckets[i];
-      if(BUCKET_STATE(b) != STATE_FILLED) {
-        target        = b;
-        bucket_target = i;
-        break;
-      }
-    }
-  }
-
-  if(target != NULL) {
-    *target                     = BUCKET_PACK(hash, STATE_FILLED);
-    self->keys[bucket_target]   = key;
-    self->values[bucket_target] = value;
+  if(bucket != NULL) {
+    *bucket                    = BUCKET_PACK(hash, STATE_FILLED);
+    size_t bucket_index        = bucket - self->buckets;
+    self->keys[bucket_index]   = key;
+    self->values[bucket_index] = value;
     self->size++;
   }
 }
 
 size_t *table_get(EmeraldsHashtable *self, const char *key) {
-  size_t hash         = _table_hash_key(key) & BITS_62_MASK;
-  size_t bucket_start = hash & (vector_capacity(self->buckets) - 1);
+  size_t hash    = _table_hash_key(key) & BITS_63_MASK;
+  size_t *bucket = find_bucket(self->buckets, hash, self->keys, key, false);
 
-  for(size_t i = bucket_start; i < vector_capacity(self->buckets); i++) {
-    size_t *b = &self->buckets[i];
-    switch(BUCKET_STATE(b)) {
-    case STATE_EMPTY:
-      return NULL;
-    case STATE_FILLED:
-      if(BUCKET_HASH(b) == hash && string_equals(self->keys[i], key)) {
-        return &self->values[i];
-      }
-      break;
-    default:
-      break;
-    }
+  if(bucket != NULL && BUCKET_IS_FILLED(bucket)) {
+    // NOTE - Calculate bucket position index
+    size_t bucket_index = bucket - self->buckets;
+    return &self->values[bucket_index];
+  } else {
+    return NULL;
   }
-  for(size_t i = bucket_start; i < 0; --i) {
-    size_t *b = &self->buckets[i];
-    switch(BUCKET_STATE(b)) {
-    case STATE_EMPTY:
-      return NULL;
-    case STATE_FILLED:
-      if(BUCKET_HASH(b) == hash && string_equals(self->keys[i], key)) {
-        return &self->values[i];
-      }
-      break;
-    default:
-      break;
-    }
-  }
-
-  return NULL;
 }
 
-bool table_remove(struct EmeraldsHashtable *self, char *key) {
-  size_t hash         = _table_hash_key(key) & BITS_62_MASK;
-  size_t bucket_start = hash & (vector_capacity(self->buckets) - 1);
+void table_remove(struct EmeraldsHashtable *self, char *key) {
+  size_t hash    = _table_hash_key(key) & BITS_63_MASK;
+  size_t *bucket = find_bucket(self->buckets, hash, self->keys, key, false);
 
-  for(size_t i = bucket_start; i < vector_capacity(self->buckets); i++) {
-    size_t *b = &self->buckets[i];
-    switch(BUCKET_STATE(b)) {
-    case STATE_EMPTY:
-      return false;
-    case STATE_FILLED:
-      if(BUCKET_HASH(b) == hash && string_equals(self->keys[i], key)) {
-        *b = BUCKET_PACK(0, STATE_REMOVED);
-        --self->size;
-        return true;
-      }
-      break;
-    default:
-      break;
-    }
+  if(bucket != NULL && BUCKET_IS_FILLED(bucket)) {
+    *bucket = BUCKET_PACK(0, STATE_EMPTY);
+    self->size--;
   }
-  for(size_t i = bucket_start; i < 0; --i) {
-    size_t *b = &self->buckets[i];
-    switch(BUCKET_STATE(b)) {
-    case STATE_EMPTY:
-      return false;
-    case STATE_FILLED:
-      if(BUCKET_HASH(b) == hash && string_equals(self->keys[i], key)) {
-        *b = BUCKET_PACK(0, STATE_REMOVED);
-        --self->size;
-        return true;
-      }
-      break;
-    default:
-      break;
-    }
-  }
-
-  return false;
 }
 
-#undef STATE_EMPTY
-#undef STATE_FILLED
-#undef STATE_REMOVED
-
-#undef BITS_62_MASK
-#undef BITS_2_MASK
+#undef BITS_63_MASK
+#undef BITS_1_MASK
 #undef BUCKET_HASH
 #undef BUCKET_STATE
 #undef BUCKET_PACK
 
+#undef STATE_EMPTY
+#undef STATE_FILLED
+#undef BUCKET_IS_EMPTY
+#undef BUCKET_IS_FILLED
+
 #undef INITIAL_SIZE
+#undef LOAD_FACTOR
