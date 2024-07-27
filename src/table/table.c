@@ -4,6 +4,7 @@
 #include "../../libs/EmeraldsVector/export/EmeraldsVector.h" /* IWYU pragma: keep */
 #include "komihash.h"
 
+// TODO - Add this to EmeraldsVector
 /**
  * @brief Initializes a vector with a given size
  * @param v -> The vector to initialize
@@ -31,6 +32,7 @@
 
 #define INITIAL_SIZE 16
 #define LOAD_FACTOR  0.75
+#define GROW_FACTOR  2
 
 // NOTE - komihash's simplicity might imporove performance on tiny keys
 static size_t _table_hash_key(const char *key) {
@@ -40,11 +42,11 @@ static size_t _table_hash_key(const char *key) {
 /**
  * @brief Generic bucket finder
  * @param buckets -> The buckets vector
- * @param hash ->
- * @param keys
- * @param key
- * @param find_empty
- * @return size_t*
+ * @param hash -> The hash of the key
+ * @param keys -> The keys vector
+ * @param key -> The key to find
+ * @param find_empty -> A flag for when we are adding new keys
+ * @return size_t* -> The pointer to the bucket or NULL if not found
  */
 static size_t *find_bucket(
   size_t *buckets,
@@ -90,20 +92,21 @@ static size_t *find_bucket(
 /**
  * @brief Rehashes when bucket count reaches the load factor
  * @param self -> The hash table
- * @param bucket_count_new -> The new bucket count
  */
-static void table_rehash(EmeraldsHashtable *self, size_t bucket_count_new) {
-#define MAX(a, b) ((a) > (b) ? (a) : (b))
+static void table_rehash(EmeraldsHashtable *self) {
+  // NOTE - For slow key wrapping only rehash by a factor of 2
+  size_t bucket_size_new = vector_capacity(self->buckets) * GROW_FACTOR;
   // NOTE - Always rehash upwards but at least to initial size
-  bucket_count_new = MAX(MAX(bucket_count_new, self->size), INITIAL_SIZE);
-#undef MAX
+  if(bucket_size_new < INITIAL_SIZE) {
+    bucket_size_new = INITIAL_SIZE;
+  }
 
   size_t *buckets_new = NULL;
-  vector_initialize_n(buckets_new, bucket_count_new);
+  vector_initialize_n(buckets_new, bucket_size_new);
   const char **keys_new = NULL;
-  vector_initialize_n(keys_new, bucket_count_new);
+  vector_initialize_n(keys_new, bucket_size_new);
   size_t *values_new = NULL;
-  vector_initialize_n(values_new, bucket_count_new);
+  vector_initialize_n(values_new, bucket_size_new);
 
   for(size_t i = 0; i < vector_capacity(self->buckets); i++) {
     size_t *bucket = &self->buckets[i];
@@ -144,8 +147,7 @@ EmeraldsHashtable *table_new(void) {
 
 void table_add(EmeraldsHashtable *self, const char *key, size_t value) {
   if(self->size > vector_capacity(self->buckets) * LOAD_FACTOR) {
-    // NOTE - For slow key wrapping only rehash by a factor of 2
-    table_rehash(self, vector_capacity(self->buckets) * 2);
+    table_rehash(self);
   }
 
   size_t hash    = _table_hash_key(key) & BITS_63_MASK;
@@ -196,3 +198,4 @@ void table_remove(struct EmeraldsHashtable *self, char *key) {
 
 #undef INITIAL_SIZE
 #undef LOAD_FACTOR
+#undef GROW_FACTOR
