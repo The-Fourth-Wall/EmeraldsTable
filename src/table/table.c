@@ -2,6 +2,7 @@
 
 #include "../../libs/EmeraldsString/export/EmeraldsString.h" /* IWYU pragma: keep */
 #include "../../libs/EmeraldsVector/export/EmeraldsVector.h" /* IWYU pragma: keep */
+#include "komihash.h"
 
 #include <stdio.h>
 
@@ -32,12 +33,8 @@
 // TODO - Remove this
 #define INITIAL_SIZE 16
 
-#define XXH_STATIC_LINKING_ONLY
-#define XXH_IMPLEMENTATION
-#include "xxh3.h"
-
 static size_t _hashtable_hash_key(const char *key) {
-  return (size_t)XXH3_64bits(key, sizeof(key));
+  return komihash(key, sizeof(key), 0x0123456789ABCDEF);
 }
 
 EmeraldsHashtable *hashtable_new(void) {

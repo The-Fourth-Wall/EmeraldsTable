@@ -40,5 +40,6 @@ Mkfile.old
 dkms.conf
 
 libs/
+.DS_Store
 
 examples/*.txt
