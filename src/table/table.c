@@ -1,5 +1,6 @@
 #include "table.h"
 
+#include "../../libs/EmeraldsString/export/EmeraldsString.h" /* IWYU pragma: keep */
 #include "../../libs/EmeraldsVector/export/EmeraldsVector.h" /* IWYU pragma: keep */
 
 #include <stdio.h>
@@ -9,66 +10,76 @@
  * @param v -> The vector to initialize
  * @param n -> The size of the vector
  */
-#define vector_initialize_n(v, n) _vector_maybegrow(v, n)
-
-/**
- * @brief Swaps the contents of two vectors
- * @param a -> The first vector
- * @param b -> The second vector
- */
-#define vector_swap(a, b)        \
-  do {                           \
-    void *tmp    = *(void **)&a; \
-    *(void **)&a = *(void **)&b; \
-    *(void **)&b = tmp;          \
+#define vector_initialize_n(v, n)   \
+  do {                              \
+    _vector_maybegrow(v, n);        \
+    for(size_t i = 0; i < n; i++) { \
+      v[i] = 0;                     \
+    }                               \
   } while(0)
+
+#define STATE_EMPTY   0
+#define STATE_FILLED  1
+#define STATE_REMOVED 2
+
+// NOTE - Align bucket to 64 by tagging the state
+#define BITS_62_MASK      (size_t)(0x3fffffffffffffff)
+#define BITS_2_MASK       (size_t)(0xc000000000000000)
+#define BUCKET_HASH(b)    ((*b) & BITS_62_MASK)
+#define BUCKET_STATE(b)   (((*b) & BITS_2_MASK) >> 62)
+#define BUCKET_PACK(h, s) (((h) & BITS_62_MASK) | ((size_t)((s) & 0x03) << 62))
+
+// TODO - Remove this
+#define INITIAL_SIZE 16
 
 #define XXH_STATIC_LINKING_ONLY
 #define XXH_IMPLEMENTATION
 #include "xxh3.h"
 
-static const int initial_size = 16;
-static const size_t bits_62   = 0x3fffffffffffffffULL;
-
-size_t hash_key(const char *key) {
-  return (size_t)XXH3_64bits(&key, sizeof(key));
+static size_t _hashtable_hash_key(const char *key) {
+  return (size_t)XXH3_64bits(key, sizeof(key));
 }
 
-void hashtable_init(EmeraldsHashtable *self) {
-  vector_initialize_n(self->buckets, initial_size);
-  vector_initialize_n(self->keys, initial_size);
-  vector_initialize_n(self->values, initial_size);
+EmeraldsHashtable *hashtable_new(void) {
+  EmeraldsHashtable *self =
+    (EmeraldsHashtable *)malloc(sizeof(EmeraldsHashtable));
+
+  vector_initialize_n(self->buckets, INITIAL_SIZE);
+  vector_initialize_n(self->keys, INITIAL_SIZE);
+  vector_initialize_n(self->values, INITIAL_SIZE);
   self->size = 0;
+
+  return self;
 }
 
 void hashtable_rehash(EmeraldsHashtable *self, size_t bucket_count_new) {
 #define MAX(a, b) ((a) > (b) ? (a) : (b))
   // NOTE - Can't rehash down to smaller than current size or initial size
-  bucket_count_new = MAX(MAX(bucket_count_new, self->size), initial_size);
+  bucket_count_new = MAX(MAX(bucket_count_new, self->size), INITIAL_SIZE);
 #undef MAX
 
-  EmeraldsHashtableBucket *buckets_new = NULL;
+  size_t *buckets_new = NULL;
   vector_initialize_n(buckets_new, bucket_count_new);
   const char **keys_new = NULL;
   vector_initialize_n(keys_new, bucket_count_new);
   size_t *values_new = NULL;
   vector_initialize_n(values_new, bucket_count_new);
 
-  for(size_t i = 0; i < vector_capacity(self->buckets); ++i) {
-    EmeraldsHashtableBucket *b = &self->buckets[i];
-    if(b->state != EMERALDS_HASHTABLE_STATE_FILLED) {
+  for(size_t i = 0; i < vector_capacity(self->buckets); i++) {
+    size_t *b = &self->buckets[i];
+    if(BUCKET_STATE(b) != STATE_FILLED) {
       continue;
     }
 
     // Hash the key and find the starting bucket
-    size_t hash         = b->hash;
+    size_t hash         = BUCKET_HASH(b);
     size_t bucket_start = hash & (bucket_count_new - 1);
 
-    EmeraldsHashtableBucket *target = NULL;
-    size_t bucket_target            = 0;
-    for(size_t j = bucket_start; j < bucket_count_new; ++j) {
-      EmeraldsHashtableBucket *bNew = &buckets_new[j];
-      if(bNew->state != EMERALDS_HASHTABLE_STATE_FILLED) {
+    size_t *target       = NULL;
+    size_t bucket_target = 0;
+    for(size_t j = bucket_start; j < bucket_count_new; j++) {
+      size_t *bNew = &buckets_new[j];
+      if(BUCKET_STATE(bNew) != STATE_FILLED) {
         target        = bNew;
         bucket_target = j;
         break;
@@ -76,8 +87,8 @@ void hashtable_rehash(EmeraldsHashtable *self, size_t bucket_count_new) {
     }
     if(!target) {
       for(size_t j = bucket_start; j < 0; --j) {
-        EmeraldsHashtableBucket *bNew = &buckets_new[j];
-        if(bNew->state != EMERALDS_HASHTABLE_STATE_FILLED) {
+        size_t *bNew = &buckets_new[j];
+        if(BUCKET_STATE(bNew) != STATE_FILLED) {
           target        = bNew;
           bucket_target = j;
           break;
@@ -86,16 +97,16 @@ void hashtable_rehash(EmeraldsHashtable *self, size_t bucket_count_new) {
     }
 
     if(target != NULL) {
-      target->hash              = hash;
-      target->state             = EMERALDS_HASHTABLE_STATE_FILLED;
+      *target                   = BUCKET_PACK(hash, STATE_FILLED);
       keys_new[bucket_target]   = self->keys[i];
       values_new[bucket_target] = self->values[i];
     }
   }
 
-  vector_swap(self->buckets, buckets_new);
-  vector_swap(self->keys, keys_new);
-  vector_swap(self->values, values_new);
+  // TODO - This (potentially) is a memory leak
+  self->buckets = buckets_new;
+  self->keys    = keys_new;
+  self->values  = values_new;
 }
 
 void hashtable_insert(EmeraldsHashtable *self, const char *key, size_t value) {
@@ -104,15 +115,14 @@ void hashtable_insert(EmeraldsHashtable *self, const char *key, size_t value) {
     hashtable_rehash(self, vector_capacity(self->buckets) * 2);
   }
 
-  size_t hash         = hash_key(key) & bits_62;
+  size_t hash         = _hashtable_hash_key(key) & BITS_62_MASK;
   size_t bucket_start = hash & (vector_capacity(self->buckets) - 1);
-  printf("bucket_start: %zu\n", bucket_start);
 
-  EmeraldsHashtableBucket *target = NULL;
-  size_t bucket_target            = 0;
-  for(size_t i = bucket_start; i < vector_capacity(self->buckets); ++i) {
-    EmeraldsHashtableBucket *b = &self->buckets[i];
-    if(b->state != EMERALDS_HASHTABLE_STATE_FILLED) {
+  size_t *target       = NULL;
+  size_t bucket_target = 0;
+  for(size_t i = bucket_start; i < vector_capacity(self->buckets); i++) {
+    size_t *b = &self->buckets[i];
+    if(BUCKET_STATE(b) != STATE_FILLED) {
       target        = b;
       bucket_target = i;
       break;
@@ -120,8 +130,8 @@ void hashtable_insert(EmeraldsHashtable *self, const char *key, size_t value) {
   }
   if(!target) {
     for(size_t i = bucket_start; i < 0; --i) {
-      EmeraldsHashtableBucket *b = &self->buckets[i];
-      if(b->state != EMERALDS_HASHTABLE_STATE_FILLED) {
+      size_t *b = &self->buckets[i];
+      if(BUCKET_STATE(b) != STATE_FILLED) {
         target        = b;
         bucket_target = i;
         break;
@@ -130,25 +140,24 @@ void hashtable_insert(EmeraldsHashtable *self, const char *key, size_t value) {
   }
 
   if(target != NULL) {
-    target->hash                = hash;
-    target->state               = EMERALDS_HASHTABLE_STATE_FILLED;
+    *target                     = BUCKET_PACK(hash, STATE_FILLED);
     self->keys[bucket_target]   = key;
     self->values[bucket_target] = value;
-    ++self->size;
+    self->size++;
   }
 }
 
 size_t *hashtable_lookup(EmeraldsHashtable *self, const char *key) {
-  size_t hash         = hash_key(key) & bits_62;
+  size_t hash         = _hashtable_hash_key(key) & BITS_62_MASK;
   size_t bucket_start = hash & (vector_capacity(self->buckets) - 1);
 
-  for(size_t i = bucket_start; i < vector_capacity(self->buckets); ++i) {
-    EmeraldsHashtableBucket *b = &self->buckets[i];
-    switch(b->state) {
-    case EMERALDS_HASHTABLE_STATE_EMPTY:
+  for(size_t i = bucket_start; i < vector_capacity(self->buckets); i++) {
+    size_t *b = &self->buckets[i];
+    switch(BUCKET_STATE(b)) {
+    case STATE_EMPTY:
       return NULL;
-    case EMERALDS_HASHTABLE_STATE_FILLED:
-      if(b->hash == hash && self->keys[i] == key) {
+    case STATE_FILLED:
+      if(BUCKET_HASH(b) == hash && string_equals(self->keys[i], key)) {
         return &self->values[i];
       }
       break;
@@ -157,12 +166,12 @@ size_t *hashtable_lookup(EmeraldsHashtable *self, const char *key) {
     }
   }
   for(size_t i = bucket_start; i < 0; --i) {
-    EmeraldsHashtableBucket *b = &self->buckets[i];
-    switch(b->state) {
-    case EMERALDS_HASHTABLE_STATE_EMPTY:
+    size_t *b = &self->buckets[i];
+    switch(BUCKET_STATE(b)) {
+    case STATE_EMPTY:
       return NULL;
-    case EMERALDS_HASHTABLE_STATE_FILLED:
-      if(b->hash == hash && self->keys[i] == key) {
+    case STATE_FILLED:
+      if(BUCKET_HASH(b) == hash && string_equals(self->keys[i], key)) {
         return &self->values[i];
       }
       break;
@@ -175,18 +184,17 @@ size_t *hashtable_lookup(EmeraldsHashtable *self, const char *key) {
 }
 
 bool hashtable_remove(struct EmeraldsHashtable *self, char *key) {
-  size_t hash         = hash_key(key) & bits_62;
+  size_t hash         = _hashtable_hash_key(key) & BITS_62_MASK;
   size_t bucket_start = hash & (vector_capacity(self->buckets) - 1);
 
-  for(size_t i = bucket_start; i < vector_capacity(self->buckets); ++i) {
-    EmeraldsHashtableBucket *b = &self->buckets[i];
-    switch(b->state) {
-    case EMERALDS_HASHTABLE_STATE_EMPTY:
+  for(size_t i = bucket_start; i < vector_capacity(self->buckets); i++) {
+    size_t *b = &self->buckets[i];
+    switch(BUCKET_STATE(b)) {
+    case STATE_EMPTY:
       return false;
-    case EMERALDS_HASHTABLE_STATE_FILLED:
-      if(b->hash == hash && self->keys[i] == key) {
-        b->hash  = 0;
-        b->state = EMERALDS_HASHTABLE_STATE_REMOVED;
+    case STATE_FILLED:
+      if(BUCKET_HASH(b) == hash && string_equals(self->keys[i], key)) {
+        *b = BUCKET_PACK(0, STATE_REMOVED);
         --self->size;
         return true;
       }
@@ -196,14 +204,13 @@ bool hashtable_remove(struct EmeraldsHashtable *self, char *key) {
     }
   }
   for(size_t i = bucket_start; i < 0; --i) {
-    EmeraldsHashtableBucket *b = &self->buckets[i];
-    switch(b->state) {
-    case EMERALDS_HASHTABLE_STATE_EMPTY:
+    size_t *b = &self->buckets[i];
+    switch(BUCKET_STATE(b)) {
+    case STATE_EMPTY:
       return false;
-    case EMERALDS_HASHTABLE_STATE_FILLED:
-      if(b->hash == hash && self->keys[i] == key) {
-        b->hash  = 0;
-        b->state = EMERALDS_HASHTABLE_STATE_REMOVED;
+    case STATE_FILLED:
+      if(BUCKET_HASH(b) == hash && string_equals(self->keys[i], key)) {
+        *b = BUCKET_PACK(0, STATE_REMOVED);
         --self->size;
         return true;
       }
@@ -221,3 +228,15 @@ void hashtable_free(EmeraldsHashtable *self) {
   vector_free(self->keys);
   vector_free(self->values);
 }
+
+#undef STATE_EMPTY
+#undef STATE_FILLED
+#undef STATE_REMOVED
+
+#undef BITS_62_MASK
+#undef BITS_2_MASK
+#undef BUCKET_HASH
+#undef BUCKET_STATE
+#undef BUCKET_PACK
+
+#undef INITIAL_SIZE
