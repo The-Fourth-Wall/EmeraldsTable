@@ -3,7 +3,12 @@
 
   "version": "0.1.0",
 
-  "dependencies": {},
+  "dependencies": {
+    "EmeraldsBool": "The-Fourth-Wall/EmeraldsBool",
+    "EmeraldsString": "The-Fourth-Wall/EmeraldsString",
+    "EmeraldsReadHandler": "The-Fourth-Wall/EmeraldsReadHandler",
+    "EmeraldsVector": "The-Fourth-Wall/EmeraldsVector"
+  },
 
   "dev-dependencies": {
     "cSpec": "Oblivious-Oblivious/cSpec"
@@ -15,9 +20,9 @@
     "cc": "clang",
     "debug": {
       "opt": "-Og -g",
-      "version": "-std=c89",
+      "version": "-std=c99",
       "flags": "-Wall -Wextra -Werror -pedantic -pedantic-errors -Wpedantic",
-      "warnings": ""
+      "warnings": "-Wno-extra-semi -Wno-unused-function"
     },
     "release": {
       "opt": "-O2",
@@ -27,7 +32,7 @@
     },
     "test": {
       "opt": "-Og -g",
-      "version": "-std=c89",
+      "version": "-std=c99",
       "flags": "",
       "warnings": ""
     }

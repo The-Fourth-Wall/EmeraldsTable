@@ -40,3 +40,5 @@ Mkfile.old
 dkms.conf
 
 libs/
+
+# examples/*.txt
