@@ -35,9 +35,9 @@ void table_add(EmeraldsHashtable *self, const char *key, size_t value);
  * @brief Linear probing lookup
  * @param self -> The hash table
  * @param key -> The key
- * @return size_t* -> The pointer to the value or NULL if not found
+ * @return size_t -> Either the value found or 0xfffc000000000000 if not found
  */
-size_t *table_get(EmeraldsHashtable *self, const char *key);
+size_t table_get(EmeraldsHashtable *self, const char *key);
 
 /**
  * @brief Removes a key-value pair from the hash table

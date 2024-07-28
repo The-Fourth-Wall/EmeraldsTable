@@ -21,6 +21,7 @@
 #define GROW_FACTOR   2
 #define HASH_FUNCTION komihash_hash
 
+#define TABLE_UNDEFINED 0xfffc000000000000
 
 /**
  * @brief Generic bucket finder
@@ -148,9 +149,9 @@ size_t table_get(EmeraldsHashtable *self, const char *key) {
 
   if(bucket != NULL && BUCKET_IS_FILLED(bucket)) {
     size_t bucket_index = bucket - self->buckets;
-    return &self->values[bucket_index];
+    return self->values[bucket_index];
   } else {
-    return NULL;
+    return TABLE_UNDEFINED;
   }
 }
 
@@ -180,3 +181,4 @@ void table_remove(struct EmeraldsHashtable *self, char *key) {
 #undef GROW_FACTOR
 #undef HASH_FUNCTION
 
+#undef TABLE_UNDEFINED
