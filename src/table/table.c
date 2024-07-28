@@ -1,8 +1,9 @@
 #include "table.h"
 
+#include "../../libs/EmeraldsBool/export/EmeraldsBool.h" /* IWYU pragma: keep */
+#include "../../libs/EmeraldsHash/export/EmeraldsHash.h" /* IWYU pragma: keep */
 #include "../../libs/EmeraldsString/export/EmeraldsString.h" /* IWYU pragma: keep */
 #include "../../libs/EmeraldsVector/export/EmeraldsVector.h" /* IWYU pragma: keep */
-#include "komihash.h"
 
 #define BITS_63_MASK      (0x7fffffffffffffff)
 #define BITS_1_MASK       (0x8000000000000000)
@@ -15,13 +16,11 @@
 #define BUCKET_IS_EMPTY(b)  (BUCKET_STATE(b) == STATE_EMPTY)
 #define BUCKET_IS_FILLED(b) (BUCKET_STATE(b) == STATE_FILLED)
 
-#define INITIAL_SIZE 16
-#define LOAD_FACTOR  0.75
-#define GROW_FACTOR  2
+#define INITIAL_SIZE  16
+#define LOAD_FACTOR   0.75
+#define GROW_FACTOR   2
+#define HASH_FUNCTION komihash_hash
 
-static size_t _table_hash_key(const char *key) {
-  return komihash(key, sizeof(key), 0x0123456789abcdef);
-}
 
 /**
  * @brief Generic bucket finder
@@ -131,7 +130,7 @@ void table_add(EmeraldsHashtable *self, const char *key, size_t value) {
     table_rehash(self);
   }
 
-  size_t hash    = _table_hash_key(key) & BITS_63_MASK;
+  size_t hash    = HASH_FUNCTION(key) & BITS_63_MASK;
   size_t *bucket = find_bucket(self->buckets, hash, self->keys, key, true);
 
   if(bucket != NULL) {
@@ -143,8 +142,8 @@ void table_add(EmeraldsHashtable *self, const char *key, size_t value) {
   }
 }
 
-size_t *table_get(EmeraldsHashtable *self, const char *key) {
-  size_t hash    = _table_hash_key(key) & BITS_63_MASK;
+size_t table_get(EmeraldsHashtable *self, const char *key) {
+  size_t hash    = HASH_FUNCTION(key) & BITS_63_MASK;
   size_t *bucket = find_bucket(self->buckets, hash, self->keys, key, false);
 
   if(bucket != NULL && BUCKET_IS_FILLED(bucket)) {
@@ -156,7 +155,7 @@ size_t *table_get(EmeraldsHashtable *self, const char *key) {
 }
 
 void table_remove(struct EmeraldsHashtable *self, char *key) {
-  size_t hash    = _table_hash_key(key) & BITS_63_MASK;
+  size_t hash    = HASH_FUNCTION(key) & BITS_63_MASK;
   size_t *bucket = find_bucket(self->buckets, hash, self->keys, key, false);
 
   if(bucket != NULL && BUCKET_IS_FILLED(bucket)) {
@@ -179,3 +178,5 @@ void table_remove(struct EmeraldsHashtable *self, char *key) {
 #undef INITIAL_SIZE
 #undef LOAD_FACTOR
 #undef GROW_FACTOR
+#undef HASH_FUNCTION
+

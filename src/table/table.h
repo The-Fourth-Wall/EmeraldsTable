@@ -1,8 +1,6 @@
 #ifndef __TABLE_H_
 #define __TABLE_H_
 
-#include "../../libs/EmeraldsBool/export/EmeraldsBool.h"
-
 #include <stddef.h> /* size_t */
 
 /**

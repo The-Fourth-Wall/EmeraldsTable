@@ -5,6 +5,7 @@
 
   "dependencies": {
     "EmeraldsBool": "The-Fourth-Wall/EmeraldsBool",
+    "EmeraldsHash": "The-Fourth-Wall/EmeraldsHash",
     "EmeraldsString": "The-Fourth-Wall/EmeraldsString",
     "EmeraldsReadHandler": "The-Fourth-Wall/EmeraldsReadHandler",
     "EmeraldsVector": "The-Fourth-Wall/EmeraldsVector"
