@@ -4,12 +4,11 @@
 #include "../../libs/EmeraldsVector/export/EmeraldsVector.h" /* IWYU pragma: keep */
 #include "komihash.h"
 
-// NOTE - Align bucket to 64 by tagging the state
-#define BITS_63_MASK      (size_t)(0x7fffffffffffffff)
-#define BITS_1_MASK       (size_t)(0x8000000000000000)
+#define BITS_63_MASK      (0x7fffffffffffffff)
+#define BITS_1_MASK       (0x8000000000000000)
 #define BUCKET_HASH(b)    ((*b) & BITS_63_MASK)
 #define BUCKET_STATE(b)   (((*b) & BITS_1_MASK) >> 63)
-#define BUCKET_PACK(h, s) (((h) & BITS_63_MASK) | ((size_t)((s) & 0x01) << 63))
+#define BUCKET_PACK(h, s) (((h) & BITS_63_MASK) | ((size_t)((s) & 1) << 63))
 
 #define STATE_EMPTY         0
 #define STATE_FILLED        1
@@ -20,7 +19,6 @@
 #define LOAD_FACTOR  0.75
 #define GROW_FACTOR  2
 
-// NOTE - komihash's simplicity might imporove performance on tiny keys
 static size_t _table_hash_key(const char *key) {
   return komihash(key, sizeof(key), 0x0123456789abcdef);
 }
@@ -58,7 +56,6 @@ static size_t *find_bucket(
     }
   }
 
-  // NOTE - Reverse iteration for better cache locality
   for(size_t i = bucket_start; i > 0; i--) {
     size_t *bucket = &buckets[i];
     if(BUCKET_IS_EMPTY(bucket) && find_empty) {
@@ -80,9 +77,7 @@ static size_t *find_bucket(
  * @param self -> The hash table
  */
 static void table_rehash(EmeraldsHashtable *self) {
-  // NOTE - For slow key wrapping only rehash by a factor of 2
   size_t bucket_size_new = vector_capacity(self->buckets) * GROW_FACTOR;
-  // NOTE - Always rehash upwards but at least to initial size
   if(bucket_size_new < INITIAL_SIZE) {
     bucket_size_new = INITIAL_SIZE;
   }
@@ -153,7 +148,6 @@ size_t *table_get(EmeraldsHashtable *self, const char *key) {
   size_t *bucket = find_bucket(self->buckets, hash, self->keys, key, false);
 
   if(bucket != NULL && BUCKET_IS_FILLED(bucket)) {
-    // NOTE - Calculate bucket position index
     size_t bucket_index = bucket - self->buckets;
     return &self->values[bucket_index];
   } else {
