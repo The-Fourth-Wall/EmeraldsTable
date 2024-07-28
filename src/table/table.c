@@ -4,20 +4,6 @@
 #include "../../libs/EmeraldsVector/export/EmeraldsVector.h" /* IWYU pragma: keep */
 #include "komihash.h"
 
-// TODO - Add this to EmeraldsVector
-/**
- * @brief Initializes a vector with a given size
- * @param v -> The vector to initialize
- * @param n -> The size of the vector
- */
-#define vector_initialize_n(v, n)   \
-  do {                              \
-    _vector_maybegrow(v, n);        \
-    for(size_t i = 0; i < n; i++) { \
-      v[i] = 0;                     \
-    }                               \
-  } while(0)
-
 // NOTE - Align bucket to 64 by tagging the state
 #define BITS_63_MASK      (size_t)(0x7fffffffffffffff)
 #define BITS_1_MASK       (size_t)(0x8000000000000000)
