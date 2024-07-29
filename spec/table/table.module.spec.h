@@ -7,6 +7,19 @@
 #define TABLE_UNDEFINED 0xfffc000000000000
 
 module(T_table, {
+  it("initializes the hash table", {
+    EmeraldsHashtable table = {0};
+    table_init(&table);
+
+    assert_that_size_t((&table)->size equals to 0);
+    assert_that_size_t(vector_capacity((&table)->buckets) equals to 16);
+    assert_that_size_t(vector_capacity((&table)->keys) equals to 16);
+    assert_that_size_t(vector_capacity((&table)->values) equals to 16);
+
+    table_add(&table, "key1", 100);
+    assert_that_size_t((&table)->size equals to 1);
+  });
+
   it("handles simple inserts, lookups and removals", {
     EmeraldsHashtable *table = table_new();
 

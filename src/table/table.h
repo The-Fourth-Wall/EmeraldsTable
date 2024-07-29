@@ -24,6 +24,12 @@ typedef struct EmeraldsHashtable {
 EmeraldsHashtable *table_new(void);
 
 /**
+ * @brief Initializes the hash table
+ * @param self
+ */
+void table_init(EmeraldsHashtable *self);
+
+/**
  * @brief Inserts a key-value pair into the hash table (open addressing)
  * @param self -> The hash table
  * @param key -> The key

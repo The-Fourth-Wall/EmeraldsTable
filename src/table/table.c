@@ -125,6 +125,13 @@ EmeraldsHashtable *table_new(void) {
   return self;
 }
 
+void table_init(EmeraldsHashtable *self) {
+  vector_initialize_n(self->buckets, INITIAL_SIZE);
+  vector_initialize_n(self->keys, INITIAL_SIZE);
+  vector_initialize_n(self->values, INITIAL_SIZE);
+  self->size = 0;
+}
+
 void table_add(EmeraldsHashtable *self, const char *key, size_t value) {
   if(self->size > vector_capacity(self->buckets) * LOAD_FACTOR) {
     table_rehash(self);
