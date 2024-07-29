@@ -7,6 +7,13 @@
 #define TABLE_UNDEFINED 0xfffc000000000000
 
 module(T_table, {
+  it("inserts the empty string into the hash table", {
+    EmeraldsHashtable *table = table_new();
+    table_add(table, "", 42);
+    size_t value = table_get(table, "");
+    assert_that_size_t(value equals to 42);
+  });
+
   it("initializes the hash table", {
     EmeraldsHashtable table = {0};
     table_init(&table);
