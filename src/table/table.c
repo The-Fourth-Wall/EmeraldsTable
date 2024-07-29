@@ -2,7 +2,6 @@
 
 #include "../../libs/EmeraldsBool/export/EmeraldsBool.h" /* IWYU pragma: keep */
 #include "../../libs/EmeraldsHash/export/EmeraldsHash.h" /* IWYU pragma: keep */
-#include "../../libs/EmeraldsString/export/EmeraldsString.h" /* IWYU pragma: keep */
 #include "../../libs/EmeraldsVector/export/EmeraldsVector.h" /* IWYU pragma: keep */
 
 #define BITS_63_MASK      (0x7fffffffffffffff)
@@ -48,7 +47,7 @@ static size_t *find_bucket(
     if(BUCKET_IS_EMPTY(bucket) && find_empty) {
       return bucket;
     } else if(BUCKET_IS_FILLED(bucket) && BUCKET_HASH(bucket) == hash &&
-              string_equals(keys[i], key)) {
+              strcmp(keys[i], key) == 0) {
       return bucket;
     } else if(find_empty && !BUCKET_IS_FILLED(bucket)) {
       target = bucket;
@@ -61,7 +60,7 @@ static size_t *find_bucket(
     if(BUCKET_IS_EMPTY(bucket) && find_empty) {
       return bucket;
     } else if(BUCKET_IS_FILLED(bucket) && BUCKET_HASH(bucket) == hash &&
-              string_equals(keys[i], key)) {
+              strcmp(keys[i], key) == 0) {
       return bucket;
     } else if(find_empty && !BUCKET_IS_FILLED(bucket)) {
       target = bucket;
@@ -155,7 +154,7 @@ size_t table_get(EmeraldsHashtable *self, const char *key) {
   }
 }
 
-void table_remove(struct EmeraldsHashtable *self, char *key) {
+void table_remove(struct EmeraldsHashtable *self, const char *key) {
   size_t hash    = HASH_FUNCTION(key) & BITS_63_MASK;
   size_t *bucket = find_bucket(self->buckets, hash, self->keys, key, false);
 

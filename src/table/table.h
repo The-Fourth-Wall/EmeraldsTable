@@ -44,7 +44,7 @@ size_t table_get(EmeraldsHashtable *self, const char *key);
  * @param self -> The hash table
  * @param key -> The key
  */
-void table_remove(struct EmeraldsHashtable *self, char *key);
+void table_remove(struct EmeraldsHashtable *self, const char *key);
 
 /**
  * @brief Deallocates all vectors

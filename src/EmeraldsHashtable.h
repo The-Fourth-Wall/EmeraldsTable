@@ -1,5 +1,5 @@
 /**
- * DOP, open addressing, linear probing, robin hood hashing/fibonacci hashing.
+ * DOP table, open addressing, linear probing, komihash hashing.
  * Copyright (C) 2024  oblivious
 
  * This program is free software: you can redistribute it and/or modify
