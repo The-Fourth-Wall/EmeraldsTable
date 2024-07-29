@@ -149,6 +149,12 @@ void table_add(EmeraldsHashtable *self, const char *key, size_t value) {
   }
 }
 
+void table_add_all(EmeraldsHashtable *src, EmeraldsHashtable *dst) {
+  for(size_t i = 0; i < src->size; i++) {
+    table_add(dst, src->keys[i], src->values[i]);
+  }
+}
+
 size_t table_get(EmeraldsHashtable *self, const char *key) {
   size_t hash    = HASH_FUNCTION(key) & BITS_63_MASK;
   size_t *bucket = find_bucket(self->buckets, hash, self->keys, key, false);

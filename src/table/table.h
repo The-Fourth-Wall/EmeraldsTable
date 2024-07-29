@@ -38,6 +38,13 @@ void table_init(EmeraldsHashtable *self);
 void table_add(EmeraldsHashtable *self, const char *key, size_t value);
 
 /**
+ * @brief Adds all entries from src to dest
+ * @param src -> Initial table
+ * @param dest -> New table
+ */
+void table_add_all(EmeraldsHashtable *src, EmeraldsHashtable *dst);
+
+/**
  * @brief Linear probing lookup
  * @param self -> The hash table
  * @param key -> The key

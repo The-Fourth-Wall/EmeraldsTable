@@ -56,6 +56,23 @@ module(T_table, {
     assert_that(table is NULL);
   });
 
+  it("adds all the keys and values of one hash table to another", {
+    EmeraldsHashtable *table1 = table_new();
+    table_add(table1, "key1", 100);
+    table_add(table1, "key2", 200);
+    table_add(table1, "key3", 300);
+
+    EmeraldsHashtable *table2 = table_new();
+    table_add(table2, "key14", 42);
+    table_add_all(table1, table2);
+
+    assert_that_size_t(table2->size equals to 4);
+    assert_that_size_t(table_get(table2, "key1") equals to 100);
+    assert_that_size_t(table_get(table2, "key2") equals to 200);
+    assert_that_size_t(table_get(table2, "key3") equals to 300);
+    assert_that_size_t(table_get(table2, "key14") equals to 42);
+  });
+
   it("reads a file with 100000 random words", {
     EmeraldsHashtable *table = table_new();
 
