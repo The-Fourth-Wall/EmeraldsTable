@@ -20,6 +20,8 @@
 #define GROW_FACTOR   2
 #define HASH_FUNCTION komihash_hash
 
+/** @brief Since values are integers, NULL is not allowed and we define a NaN
+ * boxed undefined value */
 #define TABLE_UNDEFINED 0xfffc000000000000
 
 /**
@@ -31,7 +33,7 @@
  * @param find_empty -> A flag for when we are adding new keys
  * @return size_t* -> The pointer to the bucket or NULL if not found
  */
-static size_t *find_bucket(
+static size_t *_table_find_bucket(
   size_t *buckets,
   size_t hash,
   const char **keys,
@@ -96,7 +98,7 @@ static void table_rehash(EmeraldsHashtable *self) {
 
     size_t hash = BUCKET_HASH(bucket);
     size_t *target =
-      find_bucket(buckets_new, hash, keys_new, self->keys[i], true);
+      _table_find_bucket(buckets_new, hash, keys_new, self->keys[i], true);
     if(target != NULL) {
       *target                   = BUCKET_PACK(hash, STATE_FILLED);
       size_t bucket_target      = target - buckets_new;
@@ -137,8 +139,9 @@ void table_add(EmeraldsHashtable *self, const char *key, size_t value) {
     table_rehash(self);
   }
 
-  size_t hash    = HASH_FUNCTION(key) & BITS_63_MASK;
-  size_t *bucket = find_bucket(self->buckets, hash, self->keys, key, true);
+  size_t hash = HASH_FUNCTION(key) & BITS_63_MASK;
+  size_t *bucket =
+    _table_find_bucket(self->buckets, hash, self->keys, key, true);
 
   if(bucket != NULL) {
     *bucket                    = BUCKET_PACK(hash, STATE_FILLED);
@@ -156,8 +159,9 @@ void table_add_all(EmeraldsHashtable *src, EmeraldsHashtable *dst) {
 }
 
 size_t table_get(EmeraldsHashtable *self, const char *key) {
-  size_t hash    = HASH_FUNCTION(key) & BITS_63_MASK;
-  size_t *bucket = find_bucket(self->buckets, hash, self->keys, key, false);
+  size_t hash = HASH_FUNCTION(key) & BITS_63_MASK;
+  size_t *bucket =
+    _table_find_bucket(self->buckets, hash, self->keys, key, false);
 
   if(bucket != NULL && BUCKET_IS_FILLED(bucket)) {
     size_t bucket_index = bucket - self->buckets;
@@ -168,29 +172,12 @@ size_t table_get(EmeraldsHashtable *self, const char *key) {
 }
 
 void table_remove(struct EmeraldsHashtable *self, const char *key) {
-  size_t hash    = HASH_FUNCTION(key) & BITS_63_MASK;
-  size_t *bucket = find_bucket(self->buckets, hash, self->keys, key, false);
+  size_t hash = HASH_FUNCTION(key) & BITS_63_MASK;
+  size_t *bucket =
+    _table_find_bucket(self->buckets, hash, self->keys, key, false);
 
   if(bucket != NULL && BUCKET_IS_FILLED(bucket)) {
     *bucket = BUCKET_PACK(0, STATE_EMPTY);
     self->size--;
   }
 }
-
-#undef BITS_63_MASK
-#undef BITS_1_MASK
-#undef BUCKET_HASH
-#undef BUCKET_STATE
-#undef BUCKET_PACK
-
-#undef STATE_EMPTY
-#undef STATE_FILLED
-#undef BUCKET_IS_EMPTY
-#undef BUCKET_IS_FILLED
-
-#undef INITIAL_SIZE
-#undef LOAD_FACTOR
-#undef GROW_FACTOR
-#undef HASH_FUNCTION
-
-#undef TABLE_UNDEFINED
