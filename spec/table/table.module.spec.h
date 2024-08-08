@@ -25,6 +25,12 @@ module(T_table, {
 
     table_add(&table, "key1", 100);
     assert_that_size_t((&table)->size equals to 1);
+
+    table_deinit(&table);
+
+    assert_that(table.buckets is NULL);
+    assert_that(table.keys is NULL);
+    assert_that(table.values is NULL);
   });
 
   it("handles simple inserts, lookups and removals", {

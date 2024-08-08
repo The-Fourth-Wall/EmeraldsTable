@@ -18,16 +18,16 @@ typedef struct EmeraldsHashtable {
 } EmeraldsHashtable;
 
 /**
- * @brief Creates a new hash table
- * @return EmeraldsHashtable* -> A new allocation
- */
-EmeraldsHashtable *table_new(void);
-
-/**
  * @brief Initializes the hash table
  * @param self
  */
 void table_init(EmeraldsHashtable *self);
+
+/**
+ * @brief Creates and allocates the hash table on the heap
+ * @return EmeraldsHashtable* -> A new allocation
+ */
+EmeraldsHashtable *table_new(void);
 
 /**
  * @brief Inserts a key-value pair into the hash table (open addressing)
@@ -60,16 +60,27 @@ size_t table_get(EmeraldsHashtable *self, const char *key);
 void table_remove(struct EmeraldsHashtable *self, const char *key);
 
 /**
- * @brief Deallocates all vectors
+ * @brief Deallocates all vectors (hashtable exists on stack)
  * @param self -> The hash table
  */
-#define table_free(self)        \
-  do {                          \
-    vector_free(self->buckets); \
-    vector_free(self->keys);    \
-    vector_free(self->values);  \
-    free(self);                 \
-    self = NULL;                \
+#define table_deinit(self)        \
+  do {                            \
+    vector_free((self)->buckets); \
+    vector_free((self)->keys);    \
+    vector_free((self)->values);  \
+  } while(0)
+
+/**
+ * @brief Deallocates all vectors (frees hashtable from heap)
+ * @param self -> The hash table
+ */
+#define table_free(self)          \
+  do {                            \
+    vector_free((self)->buckets); \
+    vector_free((self)->keys);    \
+    vector_free((self)->values);  \
+    free((self));                 \
+    (self) = NULL;                \
   } while(0)
 
 #endif
