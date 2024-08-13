@@ -77,7 +77,7 @@ static size_t *_table_find_bucket(
  * @brief Rehashes when bucket count reaches the load factor
  * @param self -> The hash table
  */
-static void table_rehash(EmeraldsHashtable *self) {
+static void _table_rehash(EmeraldsHashtable *self) {
   size_t bucket_size_new = vector_capacity(self->buckets) * GROW_FACTOR;
   if(bucket_size_new < INITIAL_SIZE) {
     bucket_size_new = INITIAL_SIZE;
@@ -136,7 +136,7 @@ void table_init(EmeraldsHashtable *self) {
 
 void table_add(EmeraldsHashtable *self, const char *key, size_t value) {
   if(self->size > vector_capacity(self->buckets) * LOAD_FACTOR) {
-    table_rehash(self);
+    _table_rehash(self);
   }
 
   size_t hash = HASH_FUNCTION(key) & BITS_63_MASK;
