@@ -6,12 +6,12 @@
   "dependencies": {
     "EmeraldsBool": "The-Fourth-Wall/EmeraldsBool",
     "EmeraldsHash": "The-Fourth-Wall/EmeraldsHash",
-    "EmeraldsReadHandler": "The-Fourth-Wall/EmeraldsReadHandler",
     "EmeraldsVector": "The-Fourth-Wall/EmeraldsVector"
   },
 
   "dev-dependencies": {
     "cSpec": "Oblivious-Oblivious/cSpec",
+    "EmeraldsReadHandler": "The-Fourth-Wall/EmeraldsReadHandler",
     "EmeraldsString": "The-Fourth-Wall/EmeraldsString"
   },
 
@@ -35,7 +35,7 @@
       "opt": "-Og",
       "version": "-std=c99",
       "flags": "-g -fsanitize=address",
-      "warnings": ""
+      "warnings": "-Wall -Wextra -Werror -pedantic -pedantic-errors -Wpedantic"
     }
   },
 
