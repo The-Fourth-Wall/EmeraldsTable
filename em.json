@@ -27,7 +27,7 @@
     },
     "release": {
       "opt": "-O2",
-      "version": "-std=c2x",
+      "version": "-std=c99",
       "flags": "",
       "warnings": ""
     }
