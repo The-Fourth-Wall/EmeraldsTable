@@ -40,11 +40,12 @@ static size_t *_table_find_bucket(
   const char *key,
   bool find_empty
 ) {
+  size_t i;
   size_t bucket_count = vector_capacity(buckets);
   size_t bucket_start = hash & (bucket_count - 1);
   size_t *target      = NULL;
 
-  for(size_t i = bucket_start; i < bucket_count; i++) {
+  for(i = bucket_start; i < bucket_count; i++) {
     size_t *bucket = &buckets[i];
     if(BUCKET_IS_EMPTY(bucket) && find_empty) {
       return bucket;
@@ -57,7 +58,7 @@ static size_t *_table_find_bucket(
     }
   }
 
-  for(size_t i = bucket_start; i > 0; i--) {
+  for(i = bucket_start; i > 0; i--) {
     size_t *bucket = &buckets[i];
     if(BUCKET_IS_EMPTY(bucket) && find_empty) {
       return bucket;
@@ -78,30 +79,36 @@ static size_t *_table_find_bucket(
  * @param self -> The hash table
  */
 static void _table_rehash(EmeraldsHashtable *self) {
+  size_t i;
+  size_t *buckets_new   = NULL;
+  const char **keys_new = NULL;
+  size_t *values_new    = NULL;
+
   size_t bucket_size_new = vector_capacity(self->buckets) * GROW_FACTOR;
   if(bucket_size_new < INITIAL_SIZE) {
     bucket_size_new = INITIAL_SIZE;
   }
 
-  size_t *buckets_new = NULL;
   vector_initialize_n(buckets_new, bucket_size_new);
-  const char **keys_new = NULL;
   vector_initialize_n(keys_new, bucket_size_new);
-  size_t *values_new = NULL;
   vector_initialize_n(values_new, bucket_size_new);
 
-  for(size_t i = 0; i < vector_capacity(self->buckets); i++) {
+  for(i = 0; i < vector_capacity(self->buckets); i++) {
+    size_t hash;
+    size_t *target = NULL;
+
     size_t *bucket = &self->buckets[i];
     if(!BUCKET_IS_FILLED(bucket)) {
       continue;
     }
 
-    size_t hash = BUCKET_HASH(bucket);
-    size_t *target =
+    hash = BUCKET_HASH(bucket);
+    target =
       _table_find_bucket(buckets_new, hash, keys_new, self->keys[i], true);
     if(target != NULL) {
+      size_t bucket_target;
       *target                   = BUCKET_PACK(hash, STATE_FILLED);
-      size_t bucket_target      = target - buckets_new;
+      bucket_target             = target - buckets_new;
       keys_new[bucket_target]   = self->keys[i];
       values_new[bucket_target] = self->values[i];
     }
@@ -135,17 +142,20 @@ void table_init(EmeraldsHashtable *self) {
 }
 
 void table_add(EmeraldsHashtable *self, const char *key, size_t value) {
+  size_t hash;
+  size_t *bucket = NULL;
+
   if(self->size > vector_capacity(self->buckets) * LOAD_FACTOR) {
     _table_rehash(self);
   }
 
-  size_t hash = HASH_FUNCTION(key) & BITS_63_MASK;
-  size_t *bucket =
-    _table_find_bucket(self->buckets, hash, self->keys, key, true);
+  hash   = HASH_FUNCTION(key) & BITS_63_MASK;
+  bucket = _table_find_bucket(self->buckets, hash, self->keys, key, true);
 
   if(bucket != NULL) {
+    size_t bucket_index;
     *bucket                    = BUCKET_PACK(hash, STATE_FILLED);
-    size_t bucket_index        = bucket - self->buckets;
+    bucket_index               = bucket - self->buckets;
     self->keys[bucket_index]   = key;
     self->values[bucket_index] = value;
     self->size++;
@@ -153,7 +163,8 @@ void table_add(EmeraldsHashtable *self, const char *key, size_t value) {
 }
 
 void table_add_all(EmeraldsHashtable *src, EmeraldsHashtable *dst) {
-  for(size_t i = 0; i < src->size; i++) {
+  size_t i;
+  for(i = 0; i < src->size; i++) {
     table_add(dst, src->keys[i], src->values[i]);
   }
 }

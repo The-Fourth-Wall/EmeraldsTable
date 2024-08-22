@@ -21,13 +21,13 @@
     "cc": "clang",
     "debug": {
       "opt": "-Og",
-      "version": "-std=c99",
+      "version": "-std=c89",
       "flags": "-g -fsanitize=address",
       "warnings": "-Wall -Wextra -Werror -pedantic -pedantic-errors -Wpedantic"
     },
     "release": {
       "opt": "-O2",
-      "version": "-std=c99",
+      "version": "-std=c89",
       "flags": "",
       "warnings": ""
     }
