@@ -1,0 +1,20 @@
+---AVG KOMIHASH---
+Insertion            ~ 95ns/op
+Lookup               ~ 52ns/op
+Deletion             ~ 38ns/op 
+NonExistent Removal  ~ 154ns/op
+Duplicate Insertion  ~ 51ns/op 
+
+---AVG FNV1A---
+Insertion            ~ 92ns/op
+Lookup               ~ 59ns/op
+Deletion             ~ 44ns/op 
+NonExistent Removal  ~ 161ns/op
+Duplicate Insertion  ~ 60ns/op
+
+---AVG XXH3---
+Insertion            ~ 99ns/op
+Lookup               ~ 51ns/op
+Deletion             ~ 39ns/op 
+NonExistent Removal  ~ 154ns/op
+Duplicate Insertion  ~ 53ns/op
