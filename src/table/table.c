@@ -152,7 +152,7 @@ void table_add(EmeraldsHashtable *self, const char *key, size_t value) {
 
 void table_add_all(EmeraldsHashtable *src, EmeraldsHashtable *dst) {
   size_t i;
-  for(i = 0; i < src->size; i++) {
+  for(i = 0; i < vector_capacity(src->buckets); i++) {
     size_t *bucket = &src->buckets[i];
     if(BUCKET_IS_FILLED(bucket)) {
       table_add(dst, src->keys[i], src->values[i]);
