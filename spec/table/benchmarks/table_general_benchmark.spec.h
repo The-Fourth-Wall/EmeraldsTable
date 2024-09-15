@@ -4,8 +4,6 @@
 #include "../../../libs/cSpec/export/cSpec.h"
 #include "../../../src/table/table.h"
 
-#define TABLE_UNDEFINED 0xfffc000000000000
-
 #if defined(_WIN32)
   #include <windows.h>
 static double get_time() {

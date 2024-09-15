@@ -6,12 +6,13 @@
   "dependencies": {
     "EmeraldsBool": "The-Fourth-Wall/EmeraldsBool",
     "EmeraldsHash": "The-Fourth-Wall/EmeraldsHash",
+    "EmeraldsPreprocessor": "The-Fourth-Wall/EmeraldsPreprocessor",
     "EmeraldsVector": "The-Fourth-Wall/EmeraldsVector"
   },
 
   "dev-dependencies": {
     "cSpec": "Oblivious-Oblivious/cSpec",
-    "EmeraldsReadHandler": "The-Fourth-Wall/EmeraldsReadHandler",
+    "EmeraldsFileHandler": "The-Fourth-Wall/EmeraldsFileHandler",
     "EmeraldsString": "The-Fourth-Wall/EmeraldsString"
   },
 
