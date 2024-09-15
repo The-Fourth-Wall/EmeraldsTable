@@ -19,9 +19,9 @@ module(T_table, {
     table_init(&table);
 
     assert_that_size_t((&table)->size equals to 0);
-    assert_that_size_t(vector_capacity((&table)->buckets) equals to 16);
-    assert_that_size_t(vector_capacity((&table)->keys) equals to 16);
-    assert_that_size_t(vector_capacity((&table)->values) equals to 16);
+    assert_that_size_t(vector_capacity((&table)->buckets) equals to 1024);
+    assert_that_size_t(vector_capacity((&table)->keys) equals to 1024);
+    assert_that_size_t(vector_capacity((&table)->values) equals to 1024);
 
     table_add(&table, "key1", 100);
     assert_that_size_t((&table)->size equals to 1);

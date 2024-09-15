@@ -1,8 +1,8 @@
 #include "table.h"
 
-#include "../../libs/EmeraldsBool/export/EmeraldsBool.h" /* IWYU pragma: keep */
-#include "../../libs/EmeraldsHash/export/EmeraldsHash.h" /* IWYU pragma: keep */
-#include "../../libs/EmeraldsVector/export/EmeraldsVector.h" /* IWYU pragma: keep */
+#include "../../libs/EmeraldsBool/export/EmeraldsBool.h"
+#include "../../libs/EmeraldsHash/export/EmeraldsHash.h"
+#include "../../libs/EmeraldsVector/export/EmeraldsVector.h"
 
 #define BITS_63_MASK      (0x7fffffffffffffff)
 #define BITS_1_MASK       (0x8000000000000000)
@@ -15,7 +15,7 @@
 #define BUCKET_IS_EMPTY(b)  (BUCKET_STATE(b) == STATE_EMPTY)
 #define BUCKET_IS_FILLED(b) (BUCKET_STATE(b) == STATE_FILLED)
 
-#define INITIAL_SIZE  16
+#define INITIAL_SIZE  1024
 #define LOAD_FACTOR   0.75
 #define GROW_FACTOR   2
 #define HASH_FUNCTION komihash_hash
@@ -40,38 +40,26 @@ static size_t *_table_find_bucket(
   const char *key,
   bool find_empty
 ) {
-  size_t i;
   size_t bucket_count = vector_capacity(buckets);
-  size_t bucket_start = hash & (bucket_count - 1);
-  size_t *target      = NULL;
+  size_t bucket_index = hash & (bucket_count - 1);
 
-  for(i = bucket_start; i < bucket_count; i++) {
-    size_t *bucket = &buckets[i];
-    if(BUCKET_IS_EMPTY(bucket) && find_empty) {
+  for(size_t i = 0; i < bucket_count; ++i) {
+    size_t *bucket = &buckets[bucket_index];
+    size_t state   = BUCKET_STATE(bucket);
+
+    if(state == STATE_EMPTY && !find_empty) {
+      return NULL;
+    } else if(state == STATE_EMPTY && find_empty) {
       return bucket;
-    } else if(BUCKET_IS_FILLED(bucket) && BUCKET_HASH(bucket) == hash &&
-              strcmp(keys[i], key) == 0) {
+    } else if(state == STATE_FILLED && BUCKET_HASH(bucket) == hash &&
+              strcmp(keys[bucket_index], key) == 0) {
       return bucket;
-    } else if(find_empty && !BUCKET_IS_FILLED(bucket)) {
-      target = bucket;
-      break;
     }
+
+    bucket_index = (bucket_index + 1) & (bucket_count - 1);
   }
 
-  for(i = bucket_start; i > 0; i--) {
-    size_t *bucket = &buckets[i];
-    if(BUCKET_IS_EMPTY(bucket) && find_empty) {
-      return bucket;
-    } else if(BUCKET_IS_FILLED(bucket) && BUCKET_HASH(bucket) == hash &&
-              strcmp(keys[i], key) == 0) {
-      return bucket;
-    } else if(find_empty && !BUCKET_IS_FILLED(bucket)) {
-      target = bucket;
-      break;
-    }
-  }
-
-  return target;
+  return NULL;
 }
 
 /**
@@ -165,7 +153,10 @@ void table_add(EmeraldsHashtable *self, const char *key, size_t value) {
 void table_add_all(EmeraldsHashtable *src, EmeraldsHashtable *dst) {
   size_t i;
   for(i = 0; i < src->size; i++) {
-    table_add(dst, src->keys[i], src->values[i]);
+    size_t *bucket = &src->buckets[i];
+    if(BUCKET_IS_FILLED(bucket)) {
+      table_add(dst, src->keys[i], src->values[i]);
+    }
   }
 }
 
