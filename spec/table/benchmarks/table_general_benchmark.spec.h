@@ -2,7 +2,7 @@
 #define __TABLE_GENERAL_BENCHMARK_SPEC_H_
 
 #include "../../../libs/cSpec/export/cSpec.h"
-#include "../../../src/table/table.h"
+#include "../../../src/EmeraldsHashtable.h"
 
 #if defined(_WIN32)
   #include <windows.h>

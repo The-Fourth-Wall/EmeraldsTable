@@ -5,7 +5,6 @@
 
   "dependencies": {
     "EmeraldsBool": "The-Fourth-Wall/EmeraldsBool",
-    "EmeraldsHash": "The-Fourth-Wall/EmeraldsHash",
     "EmeraldsPreprocessor": "The-Fourth-Wall/EmeraldsPreprocessor",
     "EmeraldsVector": "The-Fourth-Wall/EmeraldsVector"
   },

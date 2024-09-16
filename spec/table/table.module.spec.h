@@ -2,7 +2,7 @@
 #include "../../libs/EmeraldsFileHandler/export/EmeraldsFileHandler.h"
 #include "../../libs/EmeraldsString/export/EmeraldsString.h"
 #include "../../libs/EmeraldsVector/export/EmeraldsVector.h"
-#include "../../src/table/table.h"
+#include "../../src/EmeraldsHashtable.h"
 
 module(T_table, {
   it("inserts the empty string into the hash table", {
