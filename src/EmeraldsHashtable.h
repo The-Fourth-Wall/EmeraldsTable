@@ -74,10 +74,11 @@ p_inline size_t *_table_find_bucket(
   const char *key,
   bool find_empty
 ) {
+  size_t i;
   size_t bucket_count = vector_capacity(buckets);
   size_t bucket_index = hash & (bucket_count - 1);
 
-  for(size_t i = 0; i < bucket_count; ++i) {
+  for(i = 0; i < bucket_count; ++i) {
     size_t *bucket = &buckets[bucket_index];
     size_t state   = TABLE_BUCKET_STATE(bucket);
 
