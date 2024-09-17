@@ -51,12 +51,12 @@
  * @param buckets -> The buckets of the hash table
  * @param size -> The size of the hash table
  */
-typedef struct EmeraldsHashtable {
+typedef struct EmeraldsTable {
   const char **keys;
   size_t *values;
   size_t *buckets;
   size_t size;
-} EmeraldsHashtable;
+} EmeraldsTable;
 
 /**
  * @brief Generic bucket finder
@@ -203,7 +203,7 @@ p_inline size_t *_table_find_bucket(
  * @param key -> The key
  * @return size_t -> Either the value found or 0xfffc000000000000 if not found
  */
-p_inline size_t table_get(EmeraldsHashtable *self, const char *key) {
+p_inline size_t table_get(EmeraldsTable *self, const char *key) {
   size_t hash = TABLE_HASH_FUNCTION(key, strlen(key)) & TABLE_BITS_63_MASK;
   size_t *bucket =
     _table_find_bucket(self->buckets, hash, self->keys, key, false);

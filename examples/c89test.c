@@ -1,7 +1,7 @@
-#include "../src/EmeraldsHashtable.h"
+#include "../src/EmeraldsTable.h"
 
 int main(void) {
-  EmeraldsHashtable table = {0};
+  EmeraldsTable table = {0};
   table_init(&table);
   table_add(&table, "key1", 100);
   table_add(&table, "key2", 200);

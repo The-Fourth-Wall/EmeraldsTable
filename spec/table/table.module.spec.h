@@ -2,11 +2,11 @@
 #include "../../libs/EmeraldsFileHandler/export/EmeraldsFileHandler.h"
 #include "../../libs/EmeraldsString/export/EmeraldsString.h"
 #include "../../libs/EmeraldsVector/export/EmeraldsVector.h"
-#include "../../src/EmeraldsHashtable.h"
+#include "../../src/EmeraldsTable.h"
 
 module(T_table, {
   it("inserts the empty string into the hash table", {
-    EmeraldsHashtable table = {0};
+    EmeraldsTable table = {0};
     table_init(&table);
     table_add(&table, "", 42);
     size_t value = table_get(&table, "");
@@ -14,7 +14,7 @@ module(T_table, {
   });
 
   it("initializes the hash table", {
-    EmeraldsHashtable table = {0};
+    EmeraldsTable table = {0};
     table_init(&table);
 
     assert_that_size_t((&table)->size equals to 0);
@@ -33,7 +33,7 @@ module(T_table, {
   });
 
   it("handles simple inserts, lookups and removals", {
-    EmeraldsHashtable table = {0};
+    EmeraldsTable table = {0};
     table_init(&table);
 
     table_add(&table, "key1", 100);
@@ -65,13 +65,13 @@ module(T_table, {
   });
 
   it("adds all the keys and values of one hash table to another", {
-    EmeraldsHashtable table1 = {0};
+    EmeraldsTable table1 = {0};
     table_init(&table1);
     table_add(&table1, "key1", 100);
     table_add(&table1, "key2", 200);
     table_add(&table1, "key3", 300);
 
-    EmeraldsHashtable table2 = {0};
+    EmeraldsTable table2 = {0};
     table_init(&table2);
     table_add(&table2, "key14", 42);
     table_add_all(&table1, &table2);
@@ -84,7 +84,7 @@ module(T_table, {
   });
 
   it("reads a file with 100000 random words", {
-    EmeraldsHashtable table = {0};
+    EmeraldsTable table = {0};
     table_init(&table);
 
     char *words = string_new(file_handler_read("examples/random_words.txt"));
@@ -110,7 +110,7 @@ module(T_table, {
   });
 
   it("reads a big file with 1000000 random words", {
-    EmeraldsHashtable table = {0};
+    EmeraldsTable table = {0};
     table_init(&table);
 
     char *words = string_new(file_handler_read("examples/big_list.txt"));

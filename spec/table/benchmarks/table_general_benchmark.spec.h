@@ -2,7 +2,7 @@
 #define __TABLE_GENERAL_BENCHMARK_SPEC_H_
 
 #include "../../../libs/cSpec/export/cSpec.h"
-#include "../../../src/EmeraldsHashtable.h"
+#include "../../../src/EmeraldsTable.h"
 
 #if defined(_WIN32)
   #include <windows.h>
@@ -36,7 +36,7 @@ static char *generate_random_string(size_t length) {
 }
 
 static void
-benchmark_insertion(EmeraldsHashtable *table, char **keys, size_t count) {
+benchmark_insertion(EmeraldsTable *table, char **keys, size_t count) {
   double start_time = get_time();
   for(size_t i = 0; i < count; i++) {
     table_add(table, keys[i], i);
@@ -47,8 +47,7 @@ benchmark_insertion(EmeraldsHashtable *table, char **keys, size_t count) {
   );
 }
 
-static void
-benchmark_lookup(EmeraldsHashtable *table, char **keys, size_t count) {
+static void benchmark_lookup(EmeraldsTable *table, char **keys, size_t count) {
   double start_time = get_time();
   size_t not_found  = 0;
   for(size_t i = 0; i < count; i++) {
@@ -67,7 +66,7 @@ benchmark_lookup(EmeraldsHashtable *table, char **keys, size_t count) {
 }
 
 static void
-benchmark_deletion(EmeraldsHashtable *table, char **keys, size_t count) {
+benchmark_deletion(EmeraldsTable *table, char **keys, size_t count) {
   double start_time = get_time();
   for(size_t i = 0; i < count; i++) {
     table_remove(table, keys[i]);
@@ -78,8 +77,7 @@ benchmark_deletion(EmeraldsHashtable *table, char **keys, size_t count) {
   );
 }
 
-static void
-benchmark_remove_nonexistent(EmeraldsHashtable *table, size_t count) {
+static void benchmark_remove_nonexistent(EmeraldsTable *table, size_t count) {
   double start_time = get_time();
   for(size_t i = 0; i < count; i++) {
     char key[50];
@@ -94,9 +92,8 @@ benchmark_remove_nonexistent(EmeraldsHashtable *table, size_t count) {
   );
 }
 
-static void benchmark_insert_duplicates(
-  EmeraldsHashtable *table, char **keys, size_t count
-) {
+static void
+benchmark_insert_duplicates(EmeraldsTable *table, char **keys, size_t count) {
   for(size_t i = 0; i < count; i++) {
     table_add(table, keys[i], i);
   }
@@ -121,7 +118,7 @@ module(T_table_general_benchmark, {
   it("benchmarks the table module", {
     srand((unsigned int)time(NULL));
 
-    EmeraldsHashtable table = {0};
+    EmeraldsTable table = {0};
     table_init(&table);
 
     char **keys = malloc(sizeof(char *) * ITEM_COUNT);
