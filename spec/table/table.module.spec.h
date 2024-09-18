@@ -127,11 +127,39 @@ module(T_table, {
     size_t v5 = table_get(&table, "qcyZ1aMb5tNAvp");
     size_t v6 = table_get(&table, "wdLIfi3G7Aa4Oks");
 
-    assert_that_int(v1 equals to 222222);
-    assert_that_int(v2 equals to 333333);
-    assert_that_int(v3 equals to 555555);
-    assert_that_int(v4 equals to 777777);
-    assert_that_int(v5 equals to 888888);
-    assert_that_int(v6 equals to 999999);
+    assert_that_size_t(v1 equals to 222222);
+    assert_that_size_t(v2 equals to 333333);
+    assert_that_size_t(v3 equals to 555555);
+    assert_that_size_t(v4 equals to 777777);
+    assert_that_size_t(v5 equals to 888888);
+    assert_that_size_t(v6 equals to 999999);
+
+    table_remove(&table, "3aGzs");
+    table_remove(&table, "0xdB1dpAaUJa7");
+    table_remove(&table, "VsIfZbkotTkI");
+
+    v1 = table_get(&table, "VJC3HJ1X");
+    v2 = table_get(&table, "VSqxvKVdVVx9a");
+    v3 = table_get(&table, "qjihpIWBF4D");
+    v4 = table_get(&table, "rAwK4B12daB4fi1");
+    v5 = table_get(&table, "qcyZ1aMb5tNAvp");
+    v6 = table_get(&table, "wdLIfi3G7Aa4Oks");
+
+    assert_that_size_t(v1 equals to 222222);
+    assert_that_size_t(v2 equals to 333333);
+    assert_that_size_t(v3 equals to 555555);
+    assert_that_size_t(v4 equals to 777777);
+    assert_that_size_t(v5 equals to 888888);
+    assert_that_size_t(v6 equals to 999999);
+  });
+
+  it("verifies that collisions are handled properly when adding/deleting", {
+    EmeraldsTable table = {0};
+    table_init(&table);
+
+    table_add(&table, "abcdef", 1);
+    table_add(&table, "abcdef", table_get(&table, "abcdef") + 41);
+
+    assert_that_size_t(table_get(&table, "abcdef") equals to 42);
   });
 })
