@@ -23,136 +23,139 @@
 #include "../libs/EmeraldsVector/export/EmeraldsVector.h"
 #include "hash/komihash/komihash.h"
 
-#define TABLE_BITS_63_MASK    ((1ull << 63) - 1)
-#define TABLE_BITS_1_MASK     (1ull << 63)
-#define TABLE_BUCKET_HASH(b)  ((*b) & TABLE_BITS_63_MASK)
-#define TABLE_BUCKET_STATE(b) (((*b) & TABLE_BITS_1_MASK) >> 63)
-#define TABLE_BUCKET_PACK(h, s) \
-  (((h) & TABLE_BITS_63_MASK) | ((size_t)((s) & 1) << 63))
-
-#define TABLE_STATE_EMPTY         (0)
-#define TABLE_STATE_FILLED        (1)
-#define TABLE_BUCKET_IS_EMPTY(b)  (TABLE_BUCKET_STATE(b) == TABLE_STATE_EMPTY)
-#define TABLE_BUCKET_IS_FILLED(b) (TABLE_BUCKET_STATE(b) == TABLE_STATE_FILLED)
+#define TABLE_STATE_EMPTY   (0)
+#define TABLE_STATE_FILLED  (1)
+#define TABLE_STATE_DELETED (2)
 
 #define TABLE_INITIAL_SIZE  (1 << 10)
-#define TABLE_LOAD_FACTOR   (0.75)
 #define TABLE_GROW_FACTOR   (2)
 #define TABLE_HASH_FUNCTION komihash_hash
 
-/** @brief Since values are integers, NULL is not allowed and we define a NaN
- * boxed undefined value */
-#define TABLE_UNDEFINED (0xfffc000000000000)
+/** @brief Can dynamically redefine those constants Since values are integers,
+ * NULL is not allowed and we define a NaN boxed undefined value */
+static size_t TABLE_UNDEFINED   = 0xfffc000000000000;
+static double TABLE_LOAD_FACTOR = 0.78;
 
 /**
  * @brief Data oriented table with open addressing and linear probing
  * @param keys -> The keys of the hash table
  * @param values -> The values of the hash table
- * @param buckets -> The buckets of the hash table
- * @param size -> The size of the hash table
+ * @param hashes -> The hash values of the keys
+ * @param states -> The state of each bucket (empty or filled)
+ * @param size -> The number of elements in the hash table
+ * @param tombstones -> The number of tombstones in the hash table
  */
 typedef struct EmeraldsTable {
   const char **keys;
   size_t *values;
-  size_t *buckets;
+  size_t *hashes;
+  uint8_t *states;
   size_t size;
+  size_t tombstones;
 } EmeraldsTable;
 
 /**
  * @brief Generic bucket finder
- * @param buckets -> The buckets vector
+ * @param hashes -> The hashes array
+ * @param states -> The states array
  * @param hash -> The hash of the key
  * @param keys -> The keys vector
  * @param key -> The key to find
  * @param find_empty -> A flag for when we are adding new keys
- * @return size_t* -> The pointer to the bucket or NULL if not found
+ * @return size_t -> The index of the bucket or TABLE_UNDEFINED if not found
  */
-p_inline size_t *_table_find_bucket(
-  size_t *buckets,
+p_inline size_t _table_find_bucket(
+  size_t *hashes,
+  uint8_t *states,
   size_t hash,
   const char **keys,
   const char *key,
   bool find_empty
 ) {
   size_t i;
-  size_t bucket_count = vector_capacity(buckets);
-  size_t bucket_index = hash & (bucket_count - 1);
+  size_t bucket_count  = vector_capacity(keys);
+  size_t bucket_index  = hash & (bucket_count - 1);
+  size_t first_deleted = TABLE_UNDEFINED;
 
-  for(i = 0; i < bucket_count; ++i) {
-    size_t *bucket = &buckets[bucket_index];
-    size_t state   = TABLE_BUCKET_STATE(bucket);
-
-    if(state == TABLE_STATE_EMPTY && !find_empty) {
-      return NULL;
-    } else if(state == TABLE_STATE_EMPTY && find_empty) {
-      return bucket;
-    } else if(state == TABLE_STATE_FILLED &&
-              TABLE_BUCKET_HASH(bucket) == hash &&
+  for(i = 0; i < bucket_count; i++) {
+    if(states[bucket_index] == TABLE_STATE_EMPTY) {
+      if(find_empty) {
+        return (first_deleted != TABLE_UNDEFINED) ? first_deleted
+                                                  : bucket_index;
+      } else {
+        return TABLE_UNDEFINED;
+      }
+    } else if(states[bucket_index] == TABLE_STATE_DELETED) {
+      if(find_empty && first_deleted == TABLE_UNDEFINED) {
+        first_deleted = bucket_index;
+      }
+    } else if(hashes[bucket_index] == hash &&
               strcmp(keys[bucket_index], key) == 0) {
-      return bucket;
+      return bucket_index;
     }
 
     bucket_index = (bucket_index + 1) & (bucket_count - 1);
   }
 
-  return NULL;
+  return TABLE_UNDEFINED;
 }
 
 /**
  * @brief Rehashes when bucket count reaches the load factor
  * @param self -> The hash table
  */
-#define _table_rehash(self)                                                      \
-  do {                                                                           \
-    size_t i;                                                                    \
-    size_t *buckets_new   = NULL;                                                \
-    const char **keys_new = NULL;                                                \
-    size_t *values_new    = NULL;                                                \
-    size_t bucket_size_new =                                                     \
-      vector_capacity((self)->buckets) * TABLE_GROW_FACTOR;                      \
-    if(bucket_size_new < TABLE_INITIAL_SIZE) {                                   \
-      bucket_size_new = TABLE_INITIAL_SIZE;                                      \
-    }                                                                            \
-    vector_initialize_n(buckets_new, bucket_size_new);                           \
-    vector_initialize_n(keys_new, bucket_size_new);                              \
-    vector_initialize_n(values_new, bucket_size_new);                            \
-    for(i = 0; i < vector_capacity((self)->buckets); i++) {                      \
-      size_t hash;                                                               \
-      size_t *target = NULL;                                                     \
-      size_t *bucket = &(self)->buckets[i];                                      \
-      if(!TABLE_BUCKET_IS_FILLED(bucket)) {                                      \
-        continue;                                                                \
-      }                                                                          \
-      hash   = TABLE_BUCKET_HASH(bucket);                                        \
-      target = _table_find_bucket(                                               \
-        buckets_new, hash, keys_new, (self)->keys[i], true                       \
-      );                                                                         \
-      if(target != NULL) {                                                       \
-        size_t bucket_target;                                                    \
-        *target                   = TABLE_BUCKET_PACK(hash, TABLE_STATE_FILLED); \
-        bucket_target             = target - buckets_new;                        \
-        keys_new[bucket_target]   = (self)->keys[i];                             \
-        values_new[bucket_target] = (self)->values[i];                           \
-      }                                                                          \
-    }                                                                            \
-    vector_free((self)->buckets);                                                \
-    vector_free((self)->keys);                                                   \
-    vector_free((self)->values);                                                 \
-    (self)->buckets = buckets_new;                                               \
-    (self)->keys    = keys_new;                                                  \
-    (self)->values  = values_new;                                                \
+#define _table_rehash(self)                                                    \
+  do {                                                                         \
+    size_t i;                                                                  \
+    size_t *hashes_new    = NULL;                                              \
+    uint8_t *states_new   = NULL;                                              \
+    const char **keys_new = NULL;                                              \
+    size_t *values_new    = NULL;                                              \
+    size_t capacity       = vector_capacity((self)->keys);                     \
+    size_t capacity_new   = vector_capacity((self)->keys) * TABLE_GROW_FACTOR; \
+    if(capacity_new < TABLE_INITIAL_SIZE) {                                    \
+      capacity_new = TABLE_INITIAL_SIZE;                                       \
+    }                                                                          \
+    vector_initialize_n(hashes_new, capacity_new);                             \
+    vector_initialize_n(states_new, capacity_new);                             \
+    vector_initialize_n(keys_new, capacity_new);                               \
+    vector_initialize_n(values_new, capacity_new);                             \
+    for(i = 0; i < capacity; i++) {                                            \
+      if((self)->states[i] == TABLE_STATE_FILLED) {                            \
+        size_t hash         = (self)->hashes[i];                               \
+        size_t bucket_index = hash & (capacity_new - 1);                       \
+        while(states_new[bucket_index] == TABLE_STATE_FILLED) {                \
+          bucket_index = (bucket_index + 1) & (capacity_new - 1);              \
+        }                                                                      \
+        hashes_new[bucket_index] = hash;                                       \
+        states_new[bucket_index] = TABLE_STATE_FILLED;                         \
+        keys_new[bucket_index]   = (self)->keys[i];                            \
+        values_new[bucket_index] = (self)->values[i];                          \
+      }                                                                        \
+    }                                                                          \
+    vector_free((self)->keys);                                                 \
+    vector_free((self)->hashes);                                               \
+    vector_free((self)->values);                                               \
+    vector_free((self)->states);                                               \
+    (self)->keys       = keys_new;                                             \
+    (self)->hashes     = hashes_new;                                           \
+    (self)->values     = values_new;                                           \
+    (self)->states     = states_new;                                           \
+    (self)->tombstones = 0;                                                    \
   } while(0)
 
 /**
  * @brief Initializes the hash table
  * @param self
  */
-#define table_init(self)                                      \
-  do {                                                        \
-    vector_initialize_n((self)->buckets, TABLE_INITIAL_SIZE); \
-    vector_initialize_n((self)->keys, TABLE_INITIAL_SIZE);    \
-    vector_initialize_n((self)->values, TABLE_INITIAL_SIZE);  \
-    (self)->size = 0;                                         \
+#define table_init(self)                                     \
+  do {                                                       \
+    vector_initialize_n((self)->keys, TABLE_INITIAL_SIZE);   \
+    vector_initialize_n((self)->values, TABLE_INITIAL_SIZE); \
+    vector_initialize_n((self)->hashes, TABLE_INITIAL_SIZE); \
+    vector_initialize_n((self)->states, TABLE_INITIAL_SIZE); \
+    (self)->size       = 0;                                  \
+    (self)->tombstones = 0;                                  \
   } while(0)
 
 /**
@@ -161,24 +164,32 @@ p_inline size_t *_table_find_bucket(
  * @param key -> The key
  * @param value -> The value
  */
-#define table_add(self, key, value)                                             \
-  do {                                                                          \
-    size_t hash;                                                                \
-    size_t *bucket = NULL;                                                      \
-    if((self)->size > vector_capacity((self)->buckets) * TABLE_LOAD_FACTOR) {   \
-      _table_rehash((self));                                                    \
-    }                                                                           \
-    hash = TABLE_HASH_FUNCTION(key, strlen((key))) & TABLE_BITS_63_MASK;        \
-    bucket =                                                                    \
-      _table_find_bucket((self)->buckets, hash, (self)->keys, (key), true);     \
-    if(bucket != NULL) {                                                        \
-      size_t bucket_index;                                                      \
-      *bucket                    = TABLE_BUCKET_PACK(hash, TABLE_STATE_FILLED); \
-      bucket_index               = bucket - (self)->buckets;                    \
-      (self)->keys[bucket_index] = (key);                                       \
-      (self)->values[bucket_index] = (value);                                   \
-      (self)->size++;                                                           \
-    }                                                                           \
+#define table_add(self, key, value)                                   \
+  do {                                                                \
+    size_t hash;                                                      \
+    size_t bucket_index;                                              \
+    size_t prev_state;                                                \
+    if((self)->size + (self)->tombstones >                            \
+       vector_capacity((self)->keys) * TABLE_LOAD_FACTOR) {           \
+      _table_rehash((self));                                          \
+    }                                                                 \
+    hash         = TABLE_HASH_FUNCTION(key, strlen((key)));           \
+    bucket_index = _table_find_bucket(                                \
+      (self)->hashes, (self)->states, hash, (self)->keys, (key), true \
+    );                                                                \
+    prev_state = (self)->states[bucket_index];                        \
+    if(bucket_index != TABLE_UNDEFINED) {                             \
+      (self)->hashes[bucket_index] = hash;                            \
+      (self)->keys[bucket_index]   = (key);                           \
+      (self)->values[bucket_index] = (value);                         \
+      (self)->states[bucket_index] = TABLE_STATE_FILLED;              \
+      if(prev_state != TABLE_STATE_FILLED) {                          \
+        (self)->size++;                                               \
+        if(prev_state == TABLE_STATE_DELETED) {                       \
+          (self)->tombstones--;                                       \
+        }                                                             \
+      }                                                               \
+    }                                                                 \
   } while(0)
 
 /**
@@ -189,9 +200,8 @@ p_inline size_t *_table_find_bucket(
 #define table_add_all(src, dst)                             \
   do {                                                      \
     size_t i;                                               \
-    for(i = 0; i < vector_capacity((src)->buckets); i++) {  \
-      size_t *bucket = &(src)->buckets[i];                  \
-      if(TABLE_BUCKET_IS_FILLED(bucket)) {                  \
+    for(i = 0; i < vector_capacity((src)->keys); i++) {     \
+      if((src)->states[i] == TABLE_STATE_FILLED) {          \
         table_add((dst), (src)->keys[i], (src)->values[i]); \
       }                                                     \
     }                                                       \
@@ -204,12 +214,12 @@ p_inline size_t *_table_find_bucket(
  * @return size_t -> Either the value found or 0xfffc000000000000 if not found
  */
 p_inline size_t table_get(EmeraldsTable *self, const char *key) {
-  size_t hash = TABLE_HASH_FUNCTION(key, strlen(key)) & TABLE_BITS_63_MASK;
-  size_t *bucket =
-    _table_find_bucket(self->buckets, hash, self->keys, key, false);
+  size_t hash         = TABLE_HASH_FUNCTION(key, strlen(key));
+  size_t bucket_index = _table_find_bucket(
+    self->hashes, self->states, hash, self->keys, key, false
+  );
 
-  if(bucket != NULL && TABLE_BUCKET_IS_FILLED(bucket)) {
-    size_t bucket_index = bucket - self->buckets;
+  if(bucket_index != TABLE_UNDEFINED) {
     return self->values[bucket_index];
   } else {
     return TABLE_UNDEFINED;
@@ -221,27 +231,29 @@ p_inline size_t table_get(EmeraldsTable *self, const char *key) {
  * @param self -> The hash table
  * @param key -> The key
  */
-#define table_remove(self, key)                                              \
-  do {                                                                       \
-    size_t hash =                                                            \
-      TABLE_HASH_FUNCTION(key, strlen((key))) & TABLE_BITS_63_MASK;          \
-    size_t *bucket =                                                         \
-      _table_find_bucket((self)->buckets, hash, (self)->keys, (key), false); \
-    if(bucket != NULL && TABLE_BUCKET_IS_FILLED(bucket)) {                   \
-      *bucket = TABLE_BUCKET_PACK(0, TABLE_STATE_EMPTY);                     \
-      (self)->size--;                                                        \
-    }                                                                        \
+#define table_remove(self, key)                                        \
+  do {                                                                 \
+    size_t hash         = TABLE_HASH_FUNCTION(key, strlen((key)));     \
+    size_t bucket_index = _table_find_bucket(                          \
+      (self)->hashes, (self)->states, hash, (self)->keys, (key), false \
+    );                                                                 \
+    if(bucket_index != TABLE_UNDEFINED) {                              \
+      (self)->states[bucket_index] = TABLE_STATE_DELETED;              \
+      (self)->size--;                                                  \
+      (self)->tombstones++;                                            \
+    }                                                                  \
   } while(0)
 
 /**
  * @brief Deallocates all vectors (hashtable exists on stack)
  * @param self -> The hash table
  */
-#define table_deinit(self)        \
-  do {                            \
-    vector_free((self)->buckets); \
-    vector_free((self)->keys);    \
-    vector_free((self)->values);  \
+#define table_deinit(self)       \
+  do {                           \
+    vector_free((self)->hashes); \
+    vector_free((self)->states); \
+    vector_free((self)->keys);   \
+    vector_free((self)->values); \
   } while(0)
 
 #endif

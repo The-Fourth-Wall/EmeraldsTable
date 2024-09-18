@@ -18,7 +18,8 @@ module(T_table, {
     table_init(&table);
 
     assert_that_size_t((&table)->size equals to 0);
-    assert_that_size_t(vector_capacity((&table)->buckets) equals to 1024);
+    assert_that_size_t(vector_capacity((&table)->hashes) equals to 1024);
+    assert_that_size_t(vector_capacity((&table)->states) equals to 1024);
     assert_that_size_t(vector_capacity((&table)->keys) equals to 1024);
     assert_that_size_t(vector_capacity((&table)->values) equals to 1024);
 
@@ -27,7 +28,8 @@ module(T_table, {
 
     table_deinit(&table);
 
-    assert_that(table.buckets is NULL);
+    assert_that(table.hashes is NULL);
+    assert_that(table.states is NULL);
     assert_that(table.keys is NULL);
     assert_that(table.values is NULL);
   });
@@ -59,7 +61,8 @@ module(T_table, {
     assert_that(value2 is TABLE_UNDEFINED);
 
     table_deinit(&table);
-    assert_that(table.buckets is NULL);
+    assert_that(table.hashes is NULL);
+    assert_that(table.states is NULL);
     assert_that(table.keys is NULL);
     assert_that(table.values is NULL);
   });
