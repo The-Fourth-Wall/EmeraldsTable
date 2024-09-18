@@ -23,8 +23,8 @@
 #include "../libs/EmeraldsVector/export/EmeraldsVector.h"
 #include "hash/komihash/komihash.h"
 
-#define TABLE_BITS_63_MASK    (0x7fffffffffffffff)
-#define TABLE_BITS_1_MASK     (0x8000000000000000)
+#define TABLE_BITS_63_MASK    ((1ull << 63) - 1)
+#define TABLE_BITS_1_MASK     (1ull << 63)
 #define TABLE_BUCKET_HASH(b)  ((*b) & TABLE_BITS_63_MASK)
 #define TABLE_BUCKET_STATE(b) (((*b) & TABLE_BITS_1_MASK) >> 63)
 #define TABLE_BUCKET_PACK(h, s) \
@@ -35,7 +35,7 @@
 #define TABLE_BUCKET_IS_EMPTY(b)  (TABLE_BUCKET_STATE(b) == TABLE_STATE_EMPTY)
 #define TABLE_BUCKET_IS_FILLED(b) (TABLE_BUCKET_STATE(b) == TABLE_STATE_FILLED)
 
-#define TABLE_INITIAL_SIZE  (1024)
+#define TABLE_INITIAL_SIZE  (1 << 10)
 #define TABLE_LOAD_FACTOR   (0.75)
 #define TABLE_GROW_FACTOR   (2)
 #define TABLE_HASH_FUNCTION komihash_hash
