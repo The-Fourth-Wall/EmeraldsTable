@@ -165,4 +165,21 @@ module(T_table, {
 
     assert_that_size_t(table_get(&table, "abcdef") equals to 42);
   });
+
+  it("tests size", {
+    EmeraldsTable table = {0};
+    table_init(&table);
+
+    assert_that_size_t(table_size(&table) equals to 0);
+
+    table_add(&table, "key1", 100);
+    table_add(&table, "key2", 200);
+
+    assert_that_size_t(table_size(&table) equals to 2);
+
+    table_add(&table, "key3", 300);
+    table_add(&table, "key4", 400);
+
+    assert_that_size_t(table_size(&table) equals to 4);
+  });
 })

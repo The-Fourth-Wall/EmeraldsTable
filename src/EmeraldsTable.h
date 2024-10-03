@@ -244,6 +244,8 @@ p_inline size_t table_get(EmeraldsTable *self, const char *key) {
     }                                                                  \
   } while(0)
 
+#define table_size(self) ((self)->size)
+
 /**
  * @brief Deallocates all vectors (hashtable exists on stack)
  * @param self -> The hash table

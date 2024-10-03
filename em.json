@@ -19,9 +19,9 @@
   "compile-flags": {
     "cc": "clang",
     "debug": {
-      "opt": "-Og",
+      "opt": "-O2",
       "version": "-std=c89",
-      "flags": "-g -fsanitize=address",
+      "flags": "",
       "warnings": "-Wall -Wextra -Werror -pedantic -pedantic-errors -Wpedantic"
     },
     "release": {
