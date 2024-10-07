@@ -27,14 +27,25 @@
 #define TABLE_STATE_FILLED  (1)
 #define TABLE_STATE_DELETED (2)
 
-#define TABLE_INITIAL_SIZE  (1 << 10)
-#define TABLE_GROW_FACTOR   (2)
-#define TABLE_HASH_FUNCTION komihash_hash
+#define TABLE_GROW_FACTOR (2)
 
 /** @brief Can dynamically redefine those constants Since values are integers,
  * NULL is not allowed and we define a NaN boxed undefined value */
-static size_t TABLE_UNDEFINED   = 0xfffc000000000000;
-static double TABLE_LOAD_FACTOR = 0.78;
+#ifndef TABLE_UNDEFINED
+  #define TABLE_UNDEFINED 0xfffc000000000000
+#endif
+
+#ifndef TABLE_LOAD_FACTOR
+  #define TABLE_LOAD_FACTOR 0.78
+#endif
+
+#ifndef TABLE_INITIAL_SIZE
+  #define TABLE_INITIAL_SIZE (1 << 10)
+#endif
+
+#ifndef TABLE_HASH_FUNCTION
+  #define TABLE_HASH_FUNCTION komihash_hash
+#endif
 
 /**
  * @brief Data oriented table with open addressing and linear probing
