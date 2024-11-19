@@ -86,6 +86,26 @@ module(T_table, {
     assert_that_size_t(table_get(&table2, "key14") equals to 42);
   });
 
+  it("adds all values of one hash table to another except for labels", {
+    EmeraldsTable table1 = {0};
+    table_init(&table1);
+    table_add(&table1, "key1", 100);
+    table_add(&table1, "@key2", 200);
+    table_add(&table1, "@:key3", 300);
+    table_add(&table1, "@::key4", 400);
+
+    EmeraldsTable table2 = {0};
+    table_init(&table2);
+    table_add(&table2, "@::key14", 42);
+    table_add_all_non_labels(&table1, &table2);
+
+    assert_that_size_t(table2.size equals to 4);
+    assert_that_size_t(table_get(&table2, "key1") equals to 100);
+    assert_that_size_t(table_get(&table2, "@key2") equals to 200);
+    assert_that_size_t(table_get(&table2, "@:key3") equals to 300);
+    assert_that_size_t(table_get(&table2, "@::key14") equals to 42);
+  });
+
   it("reads a file with 100000 random words", {
     EmeraldsTable table = {0};
     table_init(&table);

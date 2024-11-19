@@ -219,6 +219,25 @@ p_inline size_t _table_find_bucket(
   } while(0)
 
 /**
+ * @brief Adds all entries from src to dst except for values starting with `@::`
+ * @param src -> Initial table
+ * @param dst -> New table
+ */
+#define table_add_all_non_labels(src, dst)                           \
+  do {                                                               \
+    size_t i;                                                        \
+    for(i = 0; i < vector_capacity((src)->keys); i++) {              \
+      if((src)->states[i] == TABLE_STATE_FILLED) {                   \
+        if((src)->keys[i] &&                                         \
+           !((src)->keys[i][0] == '@' && (src)->keys[i][1] == ':' && \
+             (src)->keys[i][2] == ':')) {                            \
+          table_add((dst), (src)->keys[i], (src)->values[i]);        \
+        }                                                            \
+      }                                                              \
+    }                                                                \
+  } while(0)
+
+/**
  * @brief Linear probing lookup
  * @param self -> The hash table
  * @param key -> The key
