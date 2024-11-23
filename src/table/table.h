@@ -5,6 +5,12 @@
 #include "../../libs/EmeraldsVector/export/EmeraldsVector.h"
 #include "../hash/komihash/komihash.h"
 
+#define TABLE_STATE_EMPTY   (0)
+#define TABLE_STATE_FILLED  (1)
+#define TABLE_STATE_DELETED (2)
+
+#define TABLE_GROW_FACTOR (2)
+
 /** @brief Can dynamically redefine those constants Since values are integers,
  * NULL is not allowed and we define a NaN boxed undefined value */
 #ifndef TABLE_UNDEFINED

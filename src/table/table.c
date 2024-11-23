@@ -1,11 +1,5 @@
 #include "table.h"
 
-#define TABLE_STATE_EMPTY   (0)
-#define TABLE_STATE_FILLED  (1)
-#define TABLE_STATE_DELETED (2)
-
-#define TABLE_GROW_FACTOR (2)
-
 /**
  * @brief Generic bucket finder
  * @param hashes -> The hashes array
