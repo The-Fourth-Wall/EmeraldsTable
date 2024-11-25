@@ -7,6 +7,7 @@
  * @param hash -> The hash of the key
  * @param keys -> The keys vector
  * @param key -> The key to find
+ * @param keylen -> The length of the key
  * @param find_empty -> A flag for when we are adding new keys
  * @return size_t -> The index of the bucket or TABLE_UNDEFINED if not found
  */
@@ -16,6 +17,7 @@ p_inline size_t _table_find_bucket(
   size_t hash,
   const char **keys,
   const char *key,
+  size_t keylen,
   bool find_empty
 ) {
   size_t i;
@@ -36,7 +38,7 @@ p_inline size_t _table_find_bucket(
         first_deleted = bucket_index;
       }
     } else if(hashes[bucket_index] == hash &&
-              strcmp(keys[bucket_index], key) == 0) {
+              strncmp(keys[bucket_index], key, keylen) == 0) {
       return bucket_index;
     }
 
@@ -102,13 +104,16 @@ void table_add(EmeraldsTable *self, const char *key, size_t value) {
   size_t hash;
   size_t bucket_index;
   size_t prev_state;
+  size_t keylen;
   if(self->size + (self->tombstones) >
      vector_capacity(self->keys) * TABLE_LOAD_FACTOR) {
     _table_rehash(self);
   }
-  hash = TABLE_HASH_FUNCTION(key, strlen(key));
-  bucket_index =
-    _table_find_bucket(self->hashes, self->states, hash, self->keys, key, true);
+  keylen       = strlen(key);
+  hash         = TABLE_HASH_FUNCTION(key, keylen);
+  bucket_index = _table_find_bucket(
+    self->hashes, self->states, hash, self->keys, key, keylen, true
+  );
   prev_state = self->states[bucket_index];
   if(bucket_index != TABLE_UNDEFINED) {
     self->hashes[bucket_index] = hash;
@@ -146,9 +151,10 @@ void table_add_all_non_labels(EmeraldsTable *src, EmeraldsTable *dst) {
 }
 
 size_t table_get(EmeraldsTable *self, const char *key) {
-  size_t hash         = TABLE_HASH_FUNCTION(key, strlen(key));
+  size_t keylen       = strlen(key);
+  size_t hash         = TABLE_HASH_FUNCTION(key, keylen);
   size_t bucket_index = _table_find_bucket(
-    self->hashes, self->states, hash, self->keys, key, false
+    self->hashes, self->states, hash, self->keys, key, keylen, false
   );
 
   if(bucket_index != TABLE_UNDEFINED) {
@@ -159,9 +165,10 @@ size_t table_get(EmeraldsTable *self, const char *key) {
 }
 
 void table_remove(EmeraldsTable *self, const char *key) {
-  size_t hash         = TABLE_HASH_FUNCTION(key, strlen(key));
+  size_t keylen       = strlen(key);
+  size_t hash         = TABLE_HASH_FUNCTION(key, keylen);
   size_t bucket_index = _table_find_bucket(
-    self->hashes, self->states, hash, self->keys, key, false
+    self->hashes, self->states, hash, self->keys, key, keylen, false
   );
   if(bucket_index != TABLE_UNDEFINED) {
     self->states[bucket_index] = TABLE_STATE_DELETED;
