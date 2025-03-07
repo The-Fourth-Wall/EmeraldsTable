@@ -1,7 +1,7 @@
 /**
  * @file komihash.h
  *
- * @version 5.10
+ * @version 5.11
  *
  * @brief The inclusion file for the "komihash" 64-bit hash function,
  * "komirand" 64-bit PRNG, and streamed "komihash".
@@ -15,7 +15,7 @@
  *
  * LICENSE:
  *
- * Copyright (c) 2021-2024 Aleksey Vaneev
+ * Copyright (c) 2021-2025 Aleksey Vaneev
  *
  * Permission is hereby granted, free of charge, to any person obtaining a
  * copy of this software and associated documentation files (the "Software"),
@@ -42,7 +42,7 @@
 #include <stdint.h>
 #include <string.h>
 
-#define KOMIHASH_VER_STR "5.10" /* KOMIHASH source code version string. */
+#define KOMIHASH_VER_STR "5.11" ///< KOMIHASH source code version string.
 
 /**
  * @def KOMIHASH_LITTLE_ENDIAN
@@ -67,14 +67,14 @@
 
     #define KOMIHASH_LITTLE_ENDIAN 0
 
-  #else /* defined( __BIG_ENDIAN__ ) */
+  #else // defined( __BIG_ENDIAN__ )
 
     #warning KOMIHASH: cannot determine endianness, assuming little-endian.
 
     #define KOMIHASH_LITTLE_ENDIAN 1
 
-  #endif /* defined( __BIG_ENDIAN__ ) */
-#endif   /* !defined( KOMIHASH_LITTLE_ENDIAN ) */
+  #endif // defined( __BIG_ENDIAN__ )
+#endif   // !defined( KOMIHASH_LITTLE_ENDIAN )
 
 /**
  * @def KOMIHASH_GCC_BUILTINS
@@ -86,7 +86,7 @@
 
   #define KOMIHASH_GCC_BUILTINS
 
-#endif /* GCC built-ins check */
+#endif // GCC built-ins check
 
 /**
  * @def KOMIHASH_EC32( v )
@@ -105,7 +105,7 @@
   #define KOMIHASH_EC32(v) (v)
   #define KOMIHASH_EC64(v) (v)
 
-#else /* KOMIHASH_LITTLE_ENDIAN */
+#else // KOMIHASH_LITTLE_ENDIAN
 
   #if defined(KOMIHASH_GCC_BUILTINS)
 
@@ -119,7 +119,7 @@
     #define KOMIHASH_EC32(v) _byteswap_ulong(v)
     #define KOMIHASH_EC64(v) _byteswap_uint64(v)
 
-  #else /* defined( _MSC_VER ) */
+  #else // defined( _MSC_VER )
 
     #define KOMIHASH_EC32(v)                            \
       ((v & 0xFF000000) >> 24 | (v & 0x00FF0000) >> 8 | \
@@ -131,9 +131,9 @@
        (v & 0x00000000FF000000) << 8 | (v & 0x0000000000FF0000) << 24 |  \
        (v & 0x000000000000FF00) << 40 | (v & 0x00000000000000FF) << 56)
 
-  #endif /* defined( _MSC_VER ) */
+  #endif // defined( _MSC_VER )
 
-#endif /* KOMIHASH_LITTLE_ENDIAN */
+#endif // KOMIHASH_LITTLE_ENDIAN
 
 /**
  * @def KOMIHASH_LIKELY( x )
@@ -154,12 +154,12 @@
   #define KOMIHASH_LIKELY(x)   __builtin_expect(x, 1)
   #define KOMIHASH_UNLIKELY(x) __builtin_expect(x, 0)
 
-#else /* defined( KOMIHASH_GCC_BUILTINS ) */
+#else // defined( KOMIHASH_GCC_BUILTINS )
 
   #define KOMIHASH_LIKELY(x)   (x)
   #define KOMIHASH_UNLIKELY(x) (x)
 
-#endif /* defined( KOMIHASH_GCC_BUILTINS ) */
+#endif // defined( KOMIHASH_GCC_BUILTINS )
 
 /**
  * @def KOMIHASH_PREFETCH( a )
@@ -175,11 +175,11 @@
 
   #define KOMIHASH_PREFETCH(a) __builtin_prefetch(a, 0, 2)
 
-#else /* Prefetch macro */
+#else // Prefetch macro
 
   #define KOMIHASH_PREFETCH(a)
 
-#endif /* Prefetch macro */
+#endif // Prefetch macro
 
 /**
  * @def KOMIHASH_PREFETCH_1
@@ -196,37 +196,29 @@
 #if defined(__clang__)
   #define KOMIHASH_PREFETCH_1(a) KOMIHASH_PREFETCH(a)
   #define KOMIHASH_PREFETCH_2(a)
-#else /* defined( __clang__ ) */
+#else // defined( __clang__ )
   #define KOMIHASH_PREFETCH_1(a)
   #define KOMIHASH_PREFETCH_2(a) KOMIHASH_PREFETCH(a)
-#endif /* defined( __clang__ ) */
+#endif // defined( __clang__ )
 
 /**
- * @def KOMIHASH_FORCE_INLINE
+ * @def KOMIHASH_INLINE
  * @brief Macro to force code inlining.
  */
 
-#if __STDC_VERSION__ >= 199901L
+#if defined(KOMIHASH_GCC_BUILTINS)
 
-  #if defined(KOMIHASH_GCC_BUILTINS)
+  #define KOMIHASH_INLINE inline __attribute__((always_inline))
 
-    #define KOMIHASH_FORCE_INLINE static inline __attribute__((always_inline))
+#elif defined(_MSC_VER)
 
-  #elif defined(_MSC_VER)
+  #define KOMIHASH_INLINE inline __forceinline
 
-    #define KOMIHASH_FORCE_INLINE static inline __forceinline
+#else // defined( _MSC_VER )
 
-  #elif defined(_MSC_VER)
+  #define KOMIHASH_INLINE inline
 
-    #define KOMIHASH_FORCE_INLINE static inline
-
-  #endif /* defined( _MSC_VER ) */
-
-#else
-
-  #define KOMIHASH_FORCE_INLINE static
-
-#endif
+#endif // defined( _MSC_VER )
 
 /**
  * @brief Load unsigned 32-bit value with endianness-correction.
@@ -240,7 +232,7 @@
  * @return Endianness-corrected 32-bit value from memory.
  */
 
-KOMIHASH_FORCE_INLINE uint32_t kh_lu32ec(const uint8_t *const p) {
+static KOMIHASH_INLINE uint32_t kh_lu32ec(const uint8_t *const p) {
   uint32_t v;
   memcpy(&v, p, 4);
 
@@ -259,7 +251,7 @@ KOMIHASH_FORCE_INLINE uint32_t kh_lu32ec(const uint8_t *const p) {
  * @return Endianness-corrected 64-bit value from memory.
  */
 
-KOMIHASH_FORCE_INLINE uint64_t kh_lu64ec(const uint8_t *const p) {
+static KOMIHASH_INLINE uint64_t kh_lu64ec(const uint8_t *const p) {
   uint64_t v;
   memcpy(&v, p, 8);
 
@@ -279,7 +271,7 @@ KOMIHASH_FORCE_INLINE uint64_t kh_lu64ec(const uint8_t *const p) {
  * @return Final byte-padded value from the message.
  */
 
-KOMIHASH_FORCE_INLINE uint64_t
+static KOMIHASH_INLINE uint64_t
 kh_lpu64ec_l3(const uint8_t *const Msg, const size_t MsgLen) {
   const int ml8 = (int)(MsgLen * 8);
 
@@ -289,12 +281,12 @@ kh_lpu64ec_l3(const uint8_t *const Msg, const size_t MsgLen) {
       (uint64_t)Msg3[0] | (uint64_t)Msg3[1] << 8 | (uint64_t)Msg3[2] << 16;
 
     return ((uint64_t)1 << ml8 | m >> (24 - ml8));
-  } else {
-    const uint64_t mh = kh_lu32ec(Msg + MsgLen - 4);
-    const uint64_t ml = kh_lu32ec(Msg);
-
-    return ((uint64_t)1 << ml8 | ml | (mh >> (64 - ml8)) << 32);
   }
+
+  const uint64_t mh = kh_lu32ec(Msg + MsgLen - 4);
+  const uint64_t ml = kh_lu32ec(Msg);
+
+  return ((uint64_t)1 << ml8 | ml | (mh >> (64 - ml8)) << 32);
 }
 
 /**
@@ -310,7 +302,7 @@ kh_lpu64ec_l3(const uint8_t *const Msg, const size_t MsgLen) {
  * @return Final byte-padded value from the message.
  */
 
-KOMIHASH_FORCE_INLINE uint64_t
+static KOMIHASH_INLINE uint64_t
 kh_lpu64ec_nz(const uint8_t *const Msg, const size_t MsgLen) {
   const int ml8 = (int)(MsgLen * 8);
 
@@ -326,12 +318,12 @@ kh_lpu64ec_nz(const uint8_t *const Msg, const size_t MsgLen) {
     }
 
     return ((uint64_t)1 << ml8 | m);
-  } else {
-    const uint64_t mh = kh_lu32ec(Msg + MsgLen - 4);
-    const uint64_t ml = kh_lu32ec(Msg);
-
-    return ((uint64_t)1 << ml8 | ml | (mh >> (64 - ml8)) << 32);
   }
+
+  const uint64_t mh = kh_lu32ec(Msg + MsgLen - 4);
+  const uint64_t ml = kh_lu32ec(Msg);
+
+  return ((uint64_t)1 << ml8 | ml | (mh >> (64 - ml8)) << 32);
 }
 
 /**
@@ -347,7 +339,7 @@ kh_lpu64ec_nz(const uint8_t *const Msg, const size_t MsgLen) {
  * @return Final byte-padded value from the message.
  */
 
-KOMIHASH_FORCE_INLINE uint64_t
+static KOMIHASH_INLINE uint64_t
 kh_lpu64ec_l4(const uint8_t *const Msg, const size_t MsgLen) {
   const int ml8 = (int)(MsgLen * 8);
 
@@ -355,11 +347,11 @@ kh_lpu64ec_l4(const uint8_t *const Msg, const size_t MsgLen) {
     const uint64_t m = kh_lu32ec(Msg + MsgLen - 4);
 
     return ((uint64_t)1 << ml8 | m >> (32 - ml8));
-  } else {
-    const uint64_t m = kh_lu64ec(Msg + MsgLen - 8);
-
-    return ((uint64_t)1 << ml8 | m >> (64 - ml8));
   }
+
+  const uint64_t m = kh_lu64ec(Msg + MsgLen - 8);
+
+  return ((uint64_t)1 << ml8 | m >> (64 - ml8));
 }
 
 /**
@@ -386,7 +378,7 @@ kh_lpu64ec_l4(const uint8_t *const Msg, const size_t MsgLen) {
 
   #include <intrin.h>
 
-KOMIHASH_FORCE_INLINE void kh_m128(
+static KOMIHASH_INLINE void kh_m128(
   const uint64_t u, const uint64_t v, uint64_t *const rl, uint64_t *const rha
 ) {
   *rl = u * v;
@@ -398,7 +390,7 @@ KOMIHASH_FORCE_INLINE void kh_m128(
   #include <intrin.h>
   #pragma intrinsic(_umul128)
 
-KOMIHASH_FORCE_INLINE void kh_m128(
+static KOMIHASH_INLINE void kh_m128(
   const uint64_t u, const uint64_t v, uint64_t *const rl, uint64_t *const rha
 ) {
   uint64_t rh;
@@ -408,28 +400,28 @@ KOMIHASH_FORCE_INLINE void kh_m128(
 
 #elif defined(__SIZEOF_INT128__)
 
-KOMIHASH_FORCE_INLINE void kh_m128(
+static KOMIHASH_INLINE void kh_m128(
   const uint64_t u, const uint64_t v, uint64_t *const rl, uint64_t *const rha
 ) {
-  const unsigned __int128 r = (unsigned __int128)u * v;
+  const __uint128_t r = (__uint128_t)u * v;
 
   *rha += (uint64_t)(r >> 64);
   *rl = (uint64_t)r;
 }
 
-#elif(defined(__IBMC__) || defined(__IBMCPP__)) && defined(__LP64__)
+#elif (defined(__IBMC__) || defined(__IBMCPP__)) && defined(__LP64__)
 
-KOMIHASH_FORCE_INLINE void kh_m128(
+static KOMIHASH_INLINE void kh_m128(
   const uint64_t u, const uint64_t v, uint64_t *const rl, uint64_t *const rha
 ) {
   *rl = u * v;
   *rha += __mulhdu(u, v);
 }
 
-#else /* defined( __IBMC__ ) */
+#else // defined( __IBMC__ )
 
-  /* _umul128() code for 32-bit systems, adapted from Hacker's Delight, Henry S.
-   * Warren, Jr. */
+  // _umul128() code for 32-bit systems, adapted from Hacker's Delight,
+  // Henry S. Warren, Jr.
 
   #if defined(_MSC_VER) && !defined(__INTEL_COMPILER)
 
@@ -438,13 +430,13 @@ KOMIHASH_FORCE_INLINE void kh_m128(
 
     #define KOMIHASH_EMULU(u, v) __emulu(u, v)
 
-  #else /* defined( _MSC_VER ) && !defined( __INTEL_COMPILER ) */
+  #else // defined( _MSC_VER ) && !defined( __INTEL_COMPILER )
 
     #define KOMIHASH_EMULU(u, v) ((uint64_t)(u) * (v))
 
-  #endif /* defined( _MSC_VER ) && !defined( __INTEL_COMPILER ) */
+  #endif // defined( _MSC_VER ) && !defined( __INTEL_COMPILER )
 
-KOMIHASH_FORCE_INLINE void kh_m128(
+static inline void kh_m128(
   const uint64_t u, const uint64_t v, uint64_t *const rl, uint64_t *const rha
 ) {
   *rl = u * v;
@@ -460,7 +452,7 @@ KOMIHASH_FORCE_INLINE void kh_m128(
   *rha += KOMIHASH_EMULU(u1, v1) + (uint32_t)(w1 >> 32) + (uint32_t)(t >> 32);
 }
 
-#endif /* defined( __IBMC__ ) */
+#endif // defined( __IBMC__ )
 
 /**
  * @def KOMIHASH_HASHROUND()
@@ -567,7 +559,7 @@ KOMIHASH_FORCE_INLINE void kh_m128(
  * @return 64-bit hash value.
  */
 
-KOMIHASH_FORCE_INLINE uint64_t komihash_epi(
+static KOMIHASH_INLINE uint64_t komihash_epi(
   const uint8_t *Msg, size_t MsgLen, uint64_t Seed1, uint64_t Seed5
 ) {
   uint64_t r1h, r2h;
@@ -619,11 +611,11 @@ KOMIHASH_FORCE_INLINE uint64_t komihash_epi(
  * this value is shared between big- and little-endian systems.
  */
 
-KOMIHASH_FORCE_INLINE uint64_t
+static inline uint64_t
 komihash(const void *const Msg0, size_t MsgLen, const uint64_t UseSeed) {
   const uint8_t *Msg = (const uint8_t *)Msg0;
 
-  /* The seeds are initialized to the first mantissa bits of PI. */
+  // The seeds are initialized to the first mantissa bits of PI.
 
   uint64_t Seed1 = 0x243F6A8885A308D3 ^ (UseSeed & 0x5555555555555555);
   uint64_t Seed5 = 0x452821E638D01377 ^ (UseSeed & 0xAAAAAAAAAAAAAAAA);
@@ -631,16 +623,17 @@ komihash(const void *const Msg0, size_t MsgLen, const uint64_t UseSeed) {
 
   KOMIHASH_PREFETCH(Msg);
 
-  KOMIHASH_HASHROUND(); /* Required for Perlin Noise. */
+  KOMIHASH_HASHROUND(); // Required for Perlin Noise.
 
   if(KOMIHASH_LIKELY(MsgLen < 16)) {
     r1h = Seed1;
     r2h = Seed5;
 
     if(MsgLen > 7) {
-      /* The following two XOR instructions are equivalent to mixing a message
-       * with a cryptographic one-time-pad (bitwise modulo 2 addition).
-       * Message's statistics and distribution are thus unimportant. */
+      // The following two XOR instructions are equivalent to mixing a
+      // message with a cryptographic one-time-pad (bitwise modulo 2
+      // addition). Message's statistics and distribution are thus
+      // unimportant.
 
       r2h ^= kh_lpu64ec_l3(Msg + 8, MsgLen - 8);
       r1h ^= kh_lu64ec(Msg);
@@ -682,4 +675,252 @@ komihash(const void *const Msg0, size_t MsgLen, const uint64_t UseSeed) {
   return (komihash_epi(Msg, MsgLen, Seed1, Seed5));
 }
 
-#endif /* KOMIHASH_INCLUDED */
+/**
+ * @brief KOMIRAND 64-bit pseudo-random number generator.
+ *
+ * Simple, reliable, self-starting yet efficient PRNG, with 2^64 period.
+ * 0.62 cycles/byte performance. Self-starts in 4 iterations, which is a
+ * suggested "warming up" initialization before using its output.
+ *
+ * @param[in,out] Seed1 Seed value 1. Can be initialized to any value
+ * (even 0). This is the usual "PRNG seed" value.
+ * @param[in,out] Seed2 Seed value 2, a supporting variable. Best initialized
+ * to the same value as `Seed1`.
+ * @return The next uniformly-random 64-bit value.
+ */
+
+static KOMIHASH_INLINE uint64_t
+komirand(uint64_t *const Seed1, uint64_t *const Seed2) {
+  uint64_t s1 = *Seed1;
+  uint64_t s2 = *Seed2;
+
+  kh_m128(s1, s2, &s1, &s2);
+  s2 += 0xAAAAAAAAAAAAAAAA;
+  s1 ^= s2;
+
+  *Seed2 = s2;
+  *Seed1 = s1;
+
+  return (s1);
+}
+
+/**
+ * @def KOMIHASH_BUFSIZE
+ * @brief Streamed hashing's buffer size, in bytes.
+ *
+ * Must be a multiple of 64, and not less than 128. Can be defined externally.
+ */
+
+#if !defined(KOMIHASH_BUFSIZE)
+
+  #define KOMIHASH_BUFSIZE 768
+
+#endif // !defined( KOMIHASH_BUFSIZE )
+
+/**
+ * @brief Context structure for the streamed "komihash" hashing.
+ *
+ * The komihash_init() function should be called to initalize the structure
+ * before hashing. Note that the default buffer size is modest, permitting
+ * placement of this structure on stack. `Seed[ 0 ]` is used as `UseSeed`
+ * value storage.
+ */
+
+typedef struct {
+  uint8_t pb[8];                 ///< Buffer's padding bytes, to avoid OOB.
+  uint8_t Buf[KOMIHASH_BUFSIZE]; ///< Buffer.
+  uint64_t Seed[8];              ///< Hashing state variables.
+  size_t BufFill;                ///< Buffer fill count (position), in bytes.
+  size_t IsHashing; ///< 0 or 1, equals 1 if the actual hashing was started.
+} komihash_stream_t;
+
+/**
+ * @brief Function initializes the streamed "komihash" hashing session.
+ *
+ * @param[out] ctx Pointer to the context structure.
+ * @param UseSeed Optional value, to use instead of the default seed. To use
+ * the default seed, set to 0. The UseSeed value can have any bit length and
+ * statistical quality, and is used only as an additional entropy source. May
+ * need endianness-correction via KOMIHASH_EC64(), if this value is shared
+ * between big- and little-endian systems.
+ */
+
+static inline void
+komihash_stream_init(komihash_stream_t *const ctx, const uint64_t UseSeed) {
+  ctx->Seed[0]   = UseSeed;
+  ctx->BufFill   = 0;
+  ctx->IsHashing = 0;
+}
+
+/**
+ * @brief Function updates the streamed hashing state with a new input data.
+ *
+ * @param[in,out] ctx Pointer to the context structure. The structure must be
+ * initialized via the komihash_stream_init() function.
+ * @param Msg0 The next part of the whole message being hashed. The alignment
+ * of this pointer is unimportant. It is valid to pass 0 when `MsgLen` equals
+ * 0.
+ * @param MsgLen Message's length, in bytes, can be zero.
+ */
+
+static inline void komihash_stream_update(
+  komihash_stream_t *const ctx, const void *const Msg0, size_t MsgLen
+) {
+  const uint8_t *Msg = (const uint8_t *)Msg0;
+
+  const uint8_t *SwMsg = 0;
+  size_t SwMsgLen      = 0;
+  size_t BufFill       = ctx->BufFill;
+
+  if(BufFill + MsgLen >= KOMIHASH_BUFSIZE && BufFill != 0) {
+    const size_t CopyLen = KOMIHASH_BUFSIZE - BufFill;
+    memcpy(ctx->Buf + BufFill, Msg, CopyLen);
+    BufFill = 0;
+
+    SwMsg    = Msg + CopyLen;
+    SwMsgLen = MsgLen - CopyLen;
+
+    Msg    = ctx->Buf;
+    MsgLen = KOMIHASH_BUFSIZE;
+  }
+
+  if(BufFill == 0) {
+    while(MsgLen > 127) {
+      uint64_t Seed1, Seed2, Seed3, Seed4;
+      uint64_t Seed5, Seed6, Seed7, Seed8;
+
+      KOMIHASH_PREFETCH_2(Msg);
+
+      if(ctx->IsHashing) {
+        Seed1 = ctx->Seed[0];
+        Seed2 = ctx->Seed[1];
+        Seed3 = ctx->Seed[2];
+        Seed4 = ctx->Seed[3];
+        Seed5 = ctx->Seed[4];
+        Seed6 = ctx->Seed[5];
+        Seed7 = ctx->Seed[6];
+        Seed8 = ctx->Seed[7];
+      } else {
+        ctx->IsHashing = 1;
+
+        const uint64_t UseSeed = ctx->Seed[0];
+        Seed1 = 0x243F6A8885A308D3 ^ (UseSeed & 0x5555555555555555);
+        Seed5 = 0x452821E638D01377 ^ (UseSeed & 0xAAAAAAAAAAAAAAAA);
+
+        KOMIHASH_HASHROUND();
+
+        Seed2 = 0x13198A2E03707344 ^ Seed1;
+        Seed3 = 0xA4093822299F31D0 ^ Seed1;
+        Seed4 = 0x082EFA98EC4E6C89 ^ Seed1;
+        Seed6 = 0xBE5466CF34E90C6C ^ Seed5;
+        Seed7 = 0xC0AC29B7C97C50DD ^ Seed5;
+        Seed8 = 0x3F84D5B5B5470917 ^ Seed5;
+      }
+
+      KOMIHASH_HASHLOOP64();
+
+      ctx->Seed[0] = Seed1;
+      ctx->Seed[1] = Seed2;
+      ctx->Seed[2] = Seed3;
+      ctx->Seed[3] = Seed4;
+      ctx->Seed[4] = Seed5;
+      ctx->Seed[5] = Seed6;
+      ctx->Seed[6] = Seed7;
+      ctx->Seed[7] = Seed8;
+
+      if(SwMsgLen == 0) {
+        if(MsgLen != 0) {
+          break;
+        }
+
+        ctx->BufFill = 0;
+        return;
+      }
+
+      Msg      = SwMsg;
+      MsgLen   = SwMsgLen;
+      SwMsgLen = 0;
+    }
+  }
+
+  ctx->BufFill = BufFill + MsgLen;
+  uint8_t *op  = ctx->Buf + BufFill;
+
+  while(MsgLen != 0) {
+    *op = *Msg;
+    Msg++;
+    op++;
+    MsgLen--;
+  }
+}
+
+/**
+ * @brief Function finalizes the streamed "komihash" hashing session.
+ *
+ * Returns the resulting hash value of the previously hashed data. This value
+ * is equal to the value returned by the komihash() function for the same
+ * provided data.
+ *
+ * Note that since this function is non-destructive to the context structure,
+ * the function can be used to obtain intermediate hashes of the data stream
+ * being hashed, and the hashing can then be resumed.
+ *
+ * @param[in] ctx Pointer to the context structure. The structure must be
+ * initialized via the komihash_stream_init() function.
+ * @return 64-bit hash value. Should be endianness-corrected when this value
+ * is shared between big- and little-endian systems.
+ */
+
+static inline uint64_t komihash_stream_final(komihash_stream_t *const ctx) {
+  const uint8_t *Msg = ctx->Buf;
+  size_t MsgLen      = ctx->BufFill;
+
+  if(ctx->IsHashing == 0) {
+    return (komihash(Msg, MsgLen, ctx->Seed[0]));
+  }
+
+  ctx->pb[4] = 0;
+  ctx->pb[5] = 0;
+  ctx->pb[6] = 0;
+  ctx->pb[7] = 0;
+
+  uint64_t Seed1 = ctx->Seed[0];
+  uint64_t Seed2 = ctx->Seed[1];
+  uint64_t Seed3 = ctx->Seed[2];
+  uint64_t Seed4 = ctx->Seed[3];
+  uint64_t Seed5 = ctx->Seed[4];
+  uint64_t Seed6 = ctx->Seed[5];
+  uint64_t Seed7 = ctx->Seed[6];
+  uint64_t Seed8 = ctx->Seed[7];
+
+  if(MsgLen > 63) {
+    KOMIHASH_HASHLOOP64();
+  }
+
+  Seed5 ^= Seed6 ^ Seed7 ^ Seed8;
+  Seed1 ^= Seed2 ^ Seed3 ^ Seed4;
+
+  return (komihash_epi(Msg, MsgLen, Seed1, Seed5));
+}
+
+/**
+ * @brief FOR TESTING PURPOSES ONLY - use the komihash() function instead.
+ *
+ * @param Msg The message to produce a hash from.
+ * @param MsgLen Message's length, in bytes.
+ * @param UseSeed Seed to use.
+ * @return 64-bit hash value.
+ */
+
+static inline uint64_t komihash_stream_oneshot(
+  const void *const Msg, const size_t MsgLen, const uint64_t UseSeed
+) {
+  komihash_stream_t ctx;
+
+  komihash_stream_init(&ctx, UseSeed);
+  komihash_stream_update(&ctx, Msg, MsgLen);
+
+  return (komihash_stream_final(&ctx));
+}
+
+#endif // KOMIHASH_INCLUDED
