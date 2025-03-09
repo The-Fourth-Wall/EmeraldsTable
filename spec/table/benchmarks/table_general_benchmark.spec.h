@@ -13,7 +13,7 @@ static double get_time() {
   return (double)count.QuadPart / freq.QuadPart;
 }
 #else
-  #include <time.h>
+  #include <sys/time.h>
 static double get_time() {
   struct timeval t;
   gettimeofday(&t, NULL);
