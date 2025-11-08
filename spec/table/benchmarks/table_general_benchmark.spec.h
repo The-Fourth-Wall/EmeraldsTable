@@ -130,9 +130,11 @@ module(T_table_general_benchmark, {
 
     benchmark_insertion(&table, keys, ITEM_COUNT);
     benchmark_lookup(&table, keys, ITEM_COUNT);
-    benchmark_deletion(&table, keys, ITEM_COUNT);
-    benchmark_remove_nonexistent(&table, ITEM_COUNT);
     benchmark_insert_duplicates(&table, keys, ITEM_COUNT);
+    benchmark_lookup(&table, keys, ITEM_COUNT);
+    benchmark_deletion(&table, keys, ITEM_COUNT);
+    benchmark_lookup(&table, keys, ITEM_COUNT);
+    benchmark_remove_nonexistent(&table, ITEM_COUNT);
   });
 })
 
